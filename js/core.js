@@ -421,10 +421,10 @@
     for (const [k, e] of map) {
       const n = e.n;
       const o = { ma: n.ma, ten: n.ten, donvi: n.donvi, loai: n.loai || 'Điểm bán', tu: fmtD(n.tu), den: fmtD(n.den),
-        MBF: Z(), SME: Z(), FIBER: Z(), xMBF: Z(), xSME: Z(), xFIBER: Z() };
+        MBF: Z(), SME: Z(), FIBER: Z(), xMBF: Z(), xSME: Z(), xFIBER: Z(), WIFI: Z(), xWIFI: Z(), FWD: Z() };
       nv.push(o); byCode.set(k, o);
     }
-    const months = new Set(), detail = [], WIFI = Z(), FWD = Z();   // MobiWifi 5G = FWD có Mã gói; FWD = mọi TB FWD (chỉ hiển thị)
+    const months = new Set(), detail = [];
     for (const r of allNa(store.na)) {
       const d = r[1];
       if (yOf(d) !== nam) continue;
@@ -435,7 +435,8 @@
       const kind = isSaymee(r[3]) ? 'SME' : 'MBF';
       const ok = inWin(e, d), o = byCode.get(r[5]);
       (ok ? o[kind] : o['x' + kind])[m - 1]++;
-      if (ok && kind === 'MBF' && LOAI_WIFI.includes(r[3])) { FWD[m - 1]++; if (r[4]) WIFI[m - 1]++; }
+      // MobiWifi 5G = Loại TB FWD và có Mã gói (1 phần MobiFone); FWD = mọi TB FWD, chỉ để hiển thị (như BaoCao_PTM.ps1)
+      if (kind === 'MBF' && LOAI_WIFI.includes(r[3])) { if (r[4]) (ok ? o.WIFI : o.xWIFI)[m - 1]++; if (ok) o.FWD[m - 1]++; }
       detail.push([kind === 'SME' ? 'Saymee' : 'MobiFone', m, fmtD(d), r[0], r[3], r[2], r[4], e.n.ma, e.n.ten, o.loai, ok ? 'Có' : 'Ngoài thời gian công tác']);
     }
     for (const r of allFiber(store.fiber)) {
@@ -455,7 +456,7 @@
     if (!ms.includes(thang)) warn.push(`Tháng ${thang}/${nam} chưa có dữ liệu NEW_ACTIVE/Fiber.`);
     const kv = store.kpiv.find(k => k.nam === nam);
     const N12 = () => Array(12).fill(null);
-    const kpi = kv ? { MBF: kv.kpi.MBF.slice(), SME: kv.kpi.SME.slice(), FIBER: kv.kpi.FIBER.slice() } : { MBF: N12(), SME: N12(), FIBER: N12() };
+    const kpi = kv ? { MBF: kv.kpi.MBF.slice(), SME: kv.kpi.SME.slice(), FIBER: kv.kpi.FIBER.slice(), WIFI: (kv.kpi.WIFI || N12()).slice() } : { MBF: N12(), SME: N12(), FIBER: N12(), WIFI: N12() };
     if (!kv) warn.push(`Chưa nạp file KPI_Vung4_${nam}.xlsx: không tính được % hoàn thành.`);
     else if (kpi.MBF[thang - 1] == null && kpi.SME[thang - 1] == null) warn.push(`KPI_Vung4_${nam} chưa có chỉ tiêu tháng ${thang}.`);
     if (!store.na.some(e => e.nam === nam && e.thang === thang)) warn.push(`Chưa có file NEW_ACTIVE tháng ${thang}/${nam}.`);
@@ -465,7 +466,7 @@
     detail.sort((a, b) => (a[1] - b[1]) || a[0].localeCompare(b[0]) || a[2].split('/').reverse().join('').localeCompare(b[2].split('/').reverse().join('')));
     const tot = k => nv.reduce((s, o) => s + o[k][thang - 1], 0);
     const summary = { MBF: tot('MBF'), SME: tot('SME'), FIBER: tot('FIBER'), kMBF: kpi.MBF[thang - 1], kSME: kpi.SME[thang - 1], kFIBER: kpi.FIBER[thang - 1],
-      WIFI: WIFI[thang - 1], FWD: FWD[thang - 1], kWIFI: kv && kv.kpi.WIFI ? kv.kpi.WIFI[thang - 1] : null };
+      WIFI: tot('WIFI'), FWD: tot('FWD'), kWIFI: kpi.WIFI[thang - 1] };
     return { D, detail, warn, summary };
   }
   const DETAIL_HEAD = ['Chỉ tiêu', 'Tháng', 'Ngày', 'Số TB / User Fiber', 'Loại TB / Dịch vụ', 'Lý do HM / Tình trạng HĐ', 'Mã gói', 'Mã NV', 'Tên NV', 'Nhóm', 'Được tính'];

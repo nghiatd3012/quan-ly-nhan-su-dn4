@@ -10,7 +10,7 @@
   --page:#f9f9f7; --surface:#fcfcfb; --surface-2:#f3f2ee;
   --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
   --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
-  --s-ptm:#52514e; --s-mbf:#2a78d6; --s-sme:#eb6834; --s-fiber:#1baf7a;
+  --s-ptm:#52514e; --s-mbf:#2a78d6; --s-sme:#eb6834; --s-fiber:#1baf7a; --s-wifi:#8a5cd0;
   --good:#006300; --warn-bg:#fff4d6; --bad:#d03b3b;
   --seq-0:#cde2fb; --seq-1:#2a78d6; --accent:#2a78d6;
 }
@@ -20,7 +20,7 @@
     --page:#0d0d0d; --surface:#1a1a19; --surface-2:#232321;
     --ink:#f0efec; --ink-2:#c3c2b7; --muted:#898781;
     --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
-    --s-ptm:#c3c2b7; --s-mbf:#3987e5; --s-sme:#d95926; --s-fiber:#199e70;
+    --s-ptm:#c3c2b7; --s-mbf:#3987e5; --s-sme:#d95926; --s-fiber:#199e70; --s-wifi:#a27ae8;
     --good:#0ca30c; --warn-bg:#3a2f10; --bad:#e66767;
     --seq-0:#1c2a3d; --seq-1:#3987e5; --accent:#3987e5;
   }
@@ -30,7 +30,7 @@
   --page:#0d0d0d; --surface:#1a1a19; --surface-2:#232321;
   --ink:#f0efec; --ink-2:#c3c2b7; --muted:#898781;
   --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
-  --s-ptm:#c3c2b7; --s-mbf:#3987e5; --s-sme:#d95926; --s-fiber:#199e70;
+  --s-ptm:#c3c2b7; --s-mbf:#3987e5; --s-sme:#d95926; --s-fiber:#199e70; --s-wifi:#a27ae8;
   --good:#0ca30c; --warn-bg:#3a2f10; --bad:#e66767;
   --seq-0:#1c2a3d; --seq-1:#3987e5; --accent:#3987e5;
 }
@@ -154,6 +154,9 @@ const D = /*__DATA__*/null;
 // Chỉ tiêu gộp: TB PTM = MobiFone + Saymee (thực hiện và KH đều cộng 2 chỉ tiêu)
 const addArr = (a,b) => a.map((v,i)=>(v==null&&b[i]==null)? null : (v||0)+(b[i]||0));
 D.kpi.PTM = addArr(D.kpi.MBF, D.kpi.SME);
+// MobiWifi 5G (Loại TB FWD) là 1 phần của MobiFone, hiển thị riêng; số liệu cũ chưa có thì coi là 0 / không giao KH
+if (!D.kpi.WIFI) D.kpi.WIFI = Array(12).fill(null);
+D.nv.forEach(n=>{ if (!n.WIFI) n.WIFI = Array(12).fill(0); if (!n.xWIFI) n.xWIFI = Array(12).fill(0); if (!n.FWD) n.FWD = n.WIFI.slice(); });
 D.nv.forEach(n=>{ n.PTM = addArr(n.MBF,n.SME).map(v=>v||0); n.xPTM = addArr(n.xMBF,n.xSME).map(v=>v||0); });
 const BASE = ['MBF','SME','FIBER'];   // các chỉ tiêu gốc (không trùng nhau)
 // Nhóm hiển thị: chỉ GDV / NVBH / AM / Fiber là nhân viên. Mã C2C gộp vào NV chủ quản (cột "TB C2C"),
@@ -174,7 +177,8 @@ const T = [
   {k:'PTM',   name:'TB PTM (MobiFone + Saymee)', short:'MBF+Saymee', color:'var(--s-ptm)'},
   {k:'MBF',   name:'TB PTM MobiFone', short:'MobiFone', color:'var(--s-mbf)'},
   {k:'SME',   name:'TB PTM Saymee (THGT)', short:'Saymee', color:'var(--s-sme)'},
-  {k:'FIBER', name:'TB PTM Fiber', short:'Fiber', color:'var(--s-fiber)'}
+  {k:'FIBER', name:'TB PTM Fiber', short:'Fiber', color:'var(--s-fiber)'},
+  {k:'WIFI',  name:'TB PTM MobiWifi 5G', short:'Wifi 5G', color:'var(--s-wifi)'}
 ];
 const fmt = n => (n==null||isNaN(n)) ? '–' : Math.round(n).toLocaleString('vi-VN');
 const fmtP = p => (p==null||!isFinite(p)) ? '–' : p.toLocaleString('vi-VN',{maximumFractionDigits:1})+'%';
@@ -191,14 +195,18 @@ const sumArr = (a, ms) => ms.reduce((s,m)=>s+(a[m-1]||0),0);
 const nvVal = (nv,k,ms) => k==='TOT' ? BASE.reduce((s,b)=>s+sumArr(nv[b],ms),0) : sumArr(nv[k],ms);
 const totalM = (k,ms) => D.nv.reduce((s,nv)=>s+nvVal(nv,k,ms),0);
 // Giá trị hiển thị của 1 NV: MobiFone = mã của NV; TB C2C = các mã C2C của NV; MBF+Saymee = MobiFone + C2C + Saymee
-const rowVals = (n,ms) => { const r = {MBF:sumArr(n.MBF,ms), C2C:sumArr(n.C2C,ms), SME:sumArr(n.SME,ms), FIBER:sumArr(n.FIBER,ms)}; r.PTM = r.MBF+r.C2C+r.SME; return r; };
-const KEYS = ['PTM','MBF','C2C','SME','FIBER'];
+const rowVals = (n,ms) => { const r = {MBF:sumArr(n.MBF,ms), C2C:sumArr(n.C2C,ms), SME:sumArr(n.SME,ms), FIBER:sumArr(n.FIBER,ms), WIFI:sumArr(n.WIFI,ms), FWD:sumArr(n.FWD,ms)}; r.PTM = r.MBF+r.C2C+r.SME; return r; };
+const KEYS = ['PTM','MBF','C2C','SME','FIBER','WIFI','FWD'];
+const SHOWK = KEYS.filter(k=>k!=='FWD');   // FWD không có cột riêng: hiện trong ngoặc sau Wifi 5G
+// Ô Wifi 5G: số có gói (tính KH), trong ngoặc = mọi TB FWD kể cả chưa có gói
+const cellTxt = (k,v) => k==='WIFI' ? `${fmt(v.WIFI||0)} <span class="muted">(${fmt(v.FWD||0)})</span>` : fmt(v[k]||0);
+const cellZero = (k,v) => !(v[k] || (k==='WIFI' && v.FWD));
 const addV = (a,b) => { KEYS.forEach(k=>a[k]=(a[k]||0)+b[k]); return a; };
 // "Khác" = mọi mã không phải NV và không phải C2C đã gán chủ (C2C của NV đã nằm trong dòng NV)
 const otherVals = ms => D.nv.filter(n=>n.grp==='Khác').reduce((a,n)=>{ const v=rowVals(n,ms); v.PTM=v.MBF+v.SME; return addV(a,v); }, {});
 // Vùng 4 tách cột: MobiFone (không gồm C2C) + TB C2C + Saymee = MBF+Saymee toàn vùng
 const vungVals = ms => { const c2c = D.nv.filter(n=>n.grp==='C2C'), cM = c2c.reduce((s,n)=>s+sumArr(n.MBF,ms),0), cS = c2c.reduce((s,n)=>s+sumArr(n.SME,ms),0);
-  const r={MBF:totalM('MBF',ms)-cM, C2C:cM+cS, SME:totalM('SME',ms)-cS, FIBER:totalM('FIBER',ms)}; r.PTM=r.MBF+r.C2C+r.SME; return r; };
+  const r={MBF:totalM('MBF',ms)-cM, C2C:cM+cS, SME:totalM('SME',ms)-cS, FIBER:totalM('FIBER',ms), WIFI:totalM('WIFI',ms), FWD:totalM('FWD',ms)}; r.PTM=r.MBF+r.C2C+r.SME; return r; };
 const kpiM = (k,ms) => { let s=0, any=false; ms.forEach(m=>{const v=D.kpi[k][m-1]; if(v!=null){s+=v;any=true;}}); return any? s : null; };
 const kpiMonthsOnly = (k,ms) => ms.filter(m=>D.kpi[k][m-1]!=null);
 
@@ -248,7 +256,7 @@ function renderTiles(){
     const w = p==null?0:Math.min(100,p);
     return `<div class="card tile">
       <div class="lab"><span class="dot" style="background:${t.color}"></span>${t.name}</div>
-      <div class="big">${fmt(th)} <small>/ ${kh==null?'không giao KH':fmt(kh)+' KH'}</small></div>
+      <div class="big">${fmt(th)}${t.k==='WIFI'?` <small title="Mọi TB FWD, kể cả chưa có gói">(${fmt(totalM('FWD',ms))} FWD)</small>`:''} <small>/ ${kh==null?'không giao KH':fmt(kh)+' KH'}</small></div>
       <div class="bar" role="img" aria-label="Hoàn thành ${fmtP(p)}"><i style="width:${w}%;background:${t.color}"></i></div>
       <div class="meta"><span>Hoàn thành <span class="pct ${pctClass(p)}">${fmtP(p)}</span></span>
         <span>${kh!=null && thK<kh ? 'Còn thiếu '+fmt(kh-thK) : (kh!=null?'Vượt '+fmt(thK-kh):'')}</span></div>
@@ -321,16 +329,16 @@ function renderNv(){
   rows.sort((a,b)=>{ const va = TXT.includes(s.k)? a.n[s.k] : a[s.k], vb = TXT.includes(s.k)? b.n[s.k] : b[s.k];
     return (typeof va==='string'? va.localeCompare(vb,'vi') : va-vb) * s.dir; });
   const maxP = Math.max(1,...rows.map(r=>r.PTM));
-  const cols = [['donvi','Đơn vị'],['ma','Mã NV'],['ten','Họ tên'],['grp','Nhóm'],['PTM','MBF+Saymee',1],['MBF','MobiFone',1],['C2C','TB C2C',1],['SME','Saymee',1],['FIBER','Fiber',1],['SHARE','Tỷ trọng TB PTM',1]];
+  const cols = [['donvi','Đơn vị'],['ma','Mã NV'],['ten','Họ tên'],['grp','Nhóm'],['PTM','MBF+Saymee',1],['MBF','MobiFone',1],['C2C','TB C2C',1],['SME','Saymee',1],['FIBER','Fiber',1],['WIFI','Wifi 5G (FWD)',1],['SHARE','Tỷ trọng TB PTM',1]];
   const sum = rows.reduce((a,r)=>addV(a,r),{});
   const all = state.loai==='Tất cả' && !state.q;
   const other = otherVals(ms);
-  const foot = (lbl,v) => `<tr><td colspan="4">${lbl}</td>${KEYS.map(k=>`<td class="num">${fmt(v[k]||0)}</td>`).join('')}<td class="num">${fmtP((v.PTM||0)/grand*100)}</td></tr>`;
+  const foot = (lbl,v) => `<tr><td colspan="4">${lbl}</td>${SHOWK.map(k=>`<td class="num">${cellTxt(k,v)}</td>`).join('')}<td class="num">${fmtP((v.PTM||0)/grand*100)}</td></tr>`;
   $('tblNv').innerHTML = `<thead><tr>${cols.map(c=>`<th class="${c[2]?'num':''}" data-k="${c[0]==='SHARE'?'PTM':c[0]}" ${(s.k===c[0])?`aria-sort="${s.dir>0?'ascending':'descending'}"`:''}>${c[1]}</th>`).join('')}</tr></thead>
   <tbody>${rows.map(r=>`<tr title="${esc(r.n.tu?'Từ '+r.n.tu:'')}${r.n.den?' đến '+esc(r.n.den):''}">
     <td>${esc(r.n.donvi)}</td><td>${esc(r.n.ma)}</td><td>${esc(r.n.ten)}${r.n.den?' <span class="tag">nghỉ '+esc(r.n.den)+'</span>':''}</td><td><span class="tag">${esc(r.n.grp)}</span></td>
-    ${KEYS.map(k=>`<td class="num ${r[k]?'':'zero'}" ${k==='PTM'?'style="font-weight:600"':''}>${fmt(r[k])}</td>`).join('')}
-    <td class="num"><span class="share" style="width:${Math.round(r.PTM/maxP*60)}px"></span>${fmtP(r.PTM/grand*100)}</td></tr>`).join('') || `<tr><td colspan="10" class="muted">Không có dữ liệu</td></tr>`}</tbody>
+    ${SHOWK.map(k=>`<td class="num ${cellZero(k,r)?'zero':''}" ${k==='PTM'?'style="font-weight:600"':''}>${cellTxt(k,r)}</td>`).join('')}
+    <td class="num"><span class="share" style="width:${Math.round(r.PTM/maxP*60)}px"></span>${fmtP(r.PTM/grand*100)}</td></tr>`).join('') || `<tr><td colspan="11" class="muted">Không có dữ liệu</td></tr>`}</tbody>
   <tfoot>${foot(`Cộng nhân viên (${rows.length} người)`, sum)}${all ? foot('Khác (ĐL, Điểm bán…)', other) + foot('Vùng 4', vung) : ''}</tfoot>`;
   $('tblNv').querySelectorAll('th').forEach(th=>th.onclick=()=>{ const k=th.dataset.k; state.sort = {k, dir: state.sort.k===k? -state.sort.dir : (TXT.includes(k)?1:-1)}; renderNv(); });
 }
@@ -341,7 +349,7 @@ function renderGroups(){
   D.nv.filter(isNv).forEach(n=>{ const v=rowVals(n,ms); addV(g[n.grp],v); if (v.PTM+v.FIBER>0) g[n.grp].cnt++; });
   g['Khác'] = Object.assign({cnt: D.nv.filter(n=>n.grp==='Khác' && BASE.some(b=>sumArr(n[b],ms)>0)).length}, otherVals(ms));
   const keys = Object.keys(g);
-  const GC = [['PTM','MBF+Saymee'],['MBF','MobiFone'],['C2C','TB C2C'],['SME','Saymee'],['FIBER','Fiber']];
+  const GC = [['PTM','MBF+Saymee'],['MBF','MobiFone'],['C2C','TB C2C'],['SME','Saymee'],['FIBER','Fiber'],['WIFI','Wifi 5G (FWD)']];
   const vung = vungVals(ms);
   $('tblGrp').innerHTML = `<thead><tr><th>Nhóm</th><th class="num">Mã có TB</th>${GC.map(c=>`<th class="num">${c[1]}</th>`).join('')}</tr></thead>
     <tbody>${keys.map(k=>`<tr><td>${esc(k==='Khác'?'Khác (ĐL, Điểm bán…)':k)}</td><td class="num">${g[k].cnt}</td>${GC.map(c=>`<td class="num ${g[k][c[0]]?'':'zero'}">${fmt(g[k][c[0]]||0)}</td>`).join('')}</tr>`).join('')}</tbody>

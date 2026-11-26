@@ -38,7 +38,15 @@ input:focus,select:focus{outline:2px solid #0b4ea2;outline-offset:0;border-color
 
 .ok{color:#1b7a2c;font-weight:700}.mid{color:#a46a00;font-weight:700}.low{color:#c62828;font-weight:700}
 
-.dang-tai{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#1d2533;color:#fff;border-radius:999px;padding:7px 16px;font-size:13px;z-index:9;box-shadow:0 2px 8px #0003}
+/* Vòng quay tải dữ liệu: to, giữa màn hình (26/11/2026 - bản cũ nhỏ ở đáy, người dùng tưởng trang trống) */
+.dang-tai{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9;pointer-events:none;background:rgba(238,242,247,.35)}
+.dang-tai[hidden]{display:none}
+.dang-tai .hop{display:flex;flex-direction:column;align-items:center;gap:12px;background:#fff;border-radius:16px;padding:22px 28px;box-shadow:0 6px 24px #0b2a5a33;color:#1d2533;font-size:15px;font-weight:600}
+.quay{display:inline-block;width:54px;height:54px;border:5px solid #dbe6f5;border-top-color:#0b4ea2;border-radius:50%;animation:quay .9s linear infinite}
+.quay.nho{width:34px;height:34px;border-width:4px}
+@keyframes quay{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.quay{animation-duration:2.5s}}
+.dang-dung{display:flex;flex-direction:column;align-items:center;gap:10px;padding:40px 0;color:#4b5869;font-weight:600}
 
 .card h3{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px dashed #e7eaf0}

@@ -69,7 +69,7 @@
 
   // ===== KPI tất cả nhân viên =====
   function taiBang(the, toi) {
-    Api.goi('kpi.thang', nho.thang ? { thang: nho.thang } : {}).then(function (kq) {
+    Api.goiNho('kpi.thang', nho.thang ? { thang: nho.thang } : {}, function (kq) {
       if (!App.conHieuLuc()) return;
       UI.xoa(the);
       if (!kq.ok) { the.appendChild(el('h3', { text: 'KPI tất cả nhân viên' })); loiThe(the, kq, 'Không tải được KPI'); return; }
@@ -113,7 +113,7 @@
       var kho = khoAnh();
       if (daVe === kho) return;
       daVe = kho; blobAnh = null; nutTai.disabled = true;
-      UI.xoa(anh).appendChild(el('p', { class: 'hint', text: 'Đang dựng ảnh…' }));
+      UI.xoa(anh).appendChild(el('div', { class: 'dang-dung' }, [el('span', { class: 'quay nho' }), el('span', { text: 'Đang dựng ảnh KPI…' })]));
       veAnhKpi(R, kho).then(function (blob) {
         if (daVe !== kho || !the0.isConnected) return;
         blobAnh = blob; nutTai.disabled = false;
@@ -249,7 +249,7 @@
 
   function taiCaNhan(toi) {
     var ma = nho.xemMa;
-    Api.goi('kpi.lichSu', ma ? { ma: ma } : {}).then(function (kq) {
+    Api.goiNho('kpi.lichSu', ma ? { ma: ma } : {}, function (kq) {
       if (!App.conHieuLuc() || ma !== nho.xemMa) return;
       var cu = toi.querySelector('.ca-nhan');
       if (cu) cu.remove();
@@ -302,7 +302,7 @@
   });
 
   function taiTong(the, thang) {
-    Api.goi('tong.get', thang ? { thang: thang } : {}).then(function (kq) {
+    Api.goiNho('tong.get', thang ? { thang: thang } : {}, function (kq) {
       if (!App.conHieuLuc()) return;
       UI.xoa(the);
       the.appendChild(el('h3', { text: 'Báo cáo tổng Vùng 4' }));
