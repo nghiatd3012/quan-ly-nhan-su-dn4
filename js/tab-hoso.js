@@ -20,7 +20,7 @@
   function ve(vung) {
     var u = App.nguoiDung;
     if (cuaAi !== u.ma) { dangXem = null; cuaAi = u.ma; }
-    var than = el('div', { class: 'the' });
+    var than = el('div', { class: 'the hs-luoi' });
     if (u.quyen === 'QL' || u.quyen === 'QT') vung.appendChild(oChon(than));
     vung.appendChild(than);
     tai(than);
@@ -37,7 +37,7 @@
       });
       if (dangXem) sel.value = dangXem;
     });
-    return el('div', { class: 'card' }, [el('label', { for: 'hs-chon', text: 'Xem hồ sơ của', style: 'margin-top:0' }), sel]);
+    return el('div', { class: 'card hs-chon-the' }, [el('label', { for: 'hs-chon', text: 'Xem hồ sơ của', style: 'margin-top:0' }), sel]);
   }
 
   function tai(than, thongBao) {
