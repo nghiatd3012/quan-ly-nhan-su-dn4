@@ -11,6 +11,10 @@
   const LOAI_WIFI = ['FWD'];                                // Loại TB tính là MobiWifi 5G
   const FIBER_HUY_DUOC_TINH = ['1C KHYC', '1C NO CUOC'];    // HĐ "Đã hủy" vẫn tính khi chặn cắt chứa cụm này (đã bỏ dấu)
   const GIA_GOI_TOI_THIEU = 100000;                         // KPI NV: giá gói tháng >= 100.000đ
+  // Chấm điểm nhóm NVBH (giống BaoCao_KPI_NV.ps1, người dùng quy định 20/11/2026): điểm CT = min(%HT,120%) × tỷ trọng,
+  // CT6 = Wifi + Fiber gộp (tỷ trọng cột Wifi), CT7 (chỉ tiêu Vùng giao) tính đạt 100% × 10%.
+  const NVBH_NHOM = 'NVBH', DIEM_TRAN = 1.2, CT7_TY_TRONG = 0.1;
+  const LECH_GIO_C2C = 7;                                   // giờ trong file C2C là UTC
 
   // ===== Tiện ích chuỗi =====
   const str = v => (v == null ? '' : String(v));
@@ -72,6 +76,15 @@
     return XLSX.read(buf, { type: 'array', cellDates: true, cellText: false, cellStyles: false, dense: true });
   }
   function sheetRows(ws) {
+    // Một số file xuất từ hệ thống ghi sai vùng dữ liệu (<dimension>, vd. A1:T8 trong khi có 457 dòng):
+    // tính lại vùng từ các ô thực có để không bỏ sót dòng/cột (bộ đọc của PowerShell cũng đọc mọi ô).
+    const data = Array.isArray(ws) ? ws : ws['!data'];
+    if (data && ws['!ref']) {
+      let maxR = 0, maxC = 0;
+      data.forEach((row, r) => { if (!row) return; row.forEach((c, j) => { if (c) { if (r > maxR) maxR = r; if (j > maxC) maxC = j; } }); });
+      const cu = XLSX.utils.decode_range(ws['!ref']);
+      if (maxR > cu.e.r || maxC > cu.e.c) ws['!ref'] = XLSX.utils.encode_range({ s: cu.s, e: { r: Math.max(maxR, cu.e.r), c: Math.max(maxC, cu.e.c) } });
+    }
     return XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '', blankrows: true });
   }
   // tìm dòng tiêu đề chứa tất cả các cột cần (so khớp bỏ dấu)
@@ -99,6 +112,7 @@
     const rows = sheetRows(first);
     const top = rows.slice(0, 30).map(r => r.map(fold).join(' | ')).join('\n');
 
+    if (findHeader(rows, ['Mã giao dịch', 'Mã C2C giới thiệu']) >= 0) return parseC2C(rows);
     if (findHeader(rows, ['Lý do HM', 'Ngày kích hoạt']) >= 0) return parseNewActive(rows);
     if (findHeader(rows, ['MÃ NHÂN VIÊN', 'NGÀY ĐẤU NỐI']) >= 0) return parseFiber(rows);
     if (findHeader(rows, ['Từ mã NV', 'Sang mã NV']) >= 0) return parseDieuChinh(rows);
@@ -108,6 +122,57 @@
     if (hk >= 0 && rows[hk].some(c => /QUA NV|QUA KPP/.test(fold(c)))) return parseKpiNv(wb, name);
     if (/DOANH THU|TKC/.test(top)) return { kind: 'unknown', reason: 'File doanh thu TKC: hiện chưa dùng trong báo cáo' };
     return { kind: 'unknown', reason: 'Không nhận ra loại file (không thấy các cột quen thuộc)' };
+  }
+
+  // C2C (baoCaoC2CThanhCong_* / C2C_Txx.xlsx, giống ChuanHoa_C2C.ps1): kỳ ở các dòng "Từ ngày" / "Đến ngày",
+  // giờ "Thời gian hòa mạng TC" là UTC -> cộng 7 giờ, ngày theo giờ VN. Chỉ giữ [Mã GD, ngày VN, Mã NV, Mã C2C giới thiệu].
+  function ngayGioC2C(v) {
+    let y, mo, d, h = 0, mi = 0, s = 0;
+    if (v instanceof Date) {
+      if (isNaN(v)) return 0;
+      const t = new Date(v.getTime() + 500);   // bù sai số làm tròn của SheetJS
+      y = t.getFullYear(); mo = t.getMonth() + 1; d = t.getDate(); h = t.getHours(); mi = t.getMinutes(); s = t.getSeconds();
+    } else {
+      const m = clean(v).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+      if (!m) return 0;
+      d = +m[1]; mo = +m[2]; y = +m[3];
+      if (m[4]) { h = +m[4]; mi = +m[5]; if (m[6]) s = +m[6]; }
+    }
+    const t = new Date(Date.UTC(y, mo - 1, d, h, mi, s) + LECH_GIO_C2C * 3600000);
+    return ymd(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate());
+  }
+  function parseC2C(rows) {
+    let from = 0, to = 0;
+    for (let r = 0; r < Math.min(15, rows.length); r++) {
+      const nhan = fold(rows[r][0]);
+      const gt = rows[r].slice(1).find(c => clean(c));
+      const d = gt instanceof Date ? toDate(gt) : toDate(clean(gt).split(' ')[0]);
+      if (nhan.startsWith('TU NGAY')) from = d; else if (nhan.startsWith('DEN NGAY')) to = d;
+    }
+    const h = findHeader(rows, ['Mã giao dịch', 'Mã C2C giới thiệu']);
+    const H = rows[h];
+    const c = { gd: colIndex(H, 'Mã giao dịch'), c2c: colIndex(H, 'Mã C2C giới thiệu'), ql: colIndex(H, 'Mã nhân viên quản lý'), tg: colIndex(H, 'Thời gian hòa mạng TC') };
+    if (c.ql < 0 || c.tg < 0) throw new Error('File C2C thiếu cột "Mã nhân viên quản lý" hoặc "Thời gian hòa mạng TC"');
+    const recs = [];
+    let minD = 0, maxD = 0;
+    for (let r = h + 1; r < rows.length; r++) {
+      const row = rows[r], gd = clean(row[c.gd]);
+      if (!gd) continue;
+      const d = ngayGioC2C(row[c.tg]);
+      if (!d) continue;
+      if (d > maxD) maxD = d;
+      if (!minD || d < minD) minD = d;
+      recs.push([gd, d, up(row[c.ql]).replace(/_C2C$/, ''), up(row[c.c2c])]);
+    }
+    if (!from || !to) { from = minD; to = maxD; }
+    return { kind: 'c2c', from, to, recs };
+  }
+  // Gộp C2C: kỳ mới hơn trước, mỗi Mã giao dịch 1 lần
+  function allC2c(entries) {
+    const sorted = (entries || []).slice().sort((a, b) => (b.to - a.to) || ((b.importedAt || 0) - (a.importedAt || 0)));
+    const seen = new Set(), out = [];
+    for (const e of sorted) for (const r of e.recs) { if (seen.has(r[0])) continue; seen.add(r[0]); out.push(r); }
+    return out;
   }
 
   // NEW_ACTIVE: chỉ giữ các cột cần + dòng có Lý do HM được tính
@@ -221,8 +286,12 @@
     const ms = wb.SheetNames[0].match(/T\s*(\d{1,2})/i) || str(name).match(/T\s*(\d{1,2})/i);
     if (ms) thang = +ms[1];
     const my = str(name).match(/(20\d\d)/); if (my) nam = +my[1];
+    // Cột chỉ tiêu: tìm như BaoCao_KPI_NV.ps1 (tên chỉ tiêu bỏ khoảng trắng chứa cụm nhận diện; cột đầu tiên khớp).
+    // Mỗi chỉ tiêu: Số lượng (KH) | Tỷ lệ | (chỉ tiêu nhập tay) Thực hiện.
     const cats = {};
-    H.forEach((v, i) => {
+    const tieuDe = H.map(v => fold(v).replace(/\s/g, ''));
+    for (const c of KPI_COLS) { const i = tieuDe.findIndex(f => f.includes(c.match)); if (i >= 0) cats[c.k] = i; }
+    H.forEach((v, i) => {   // dự phòng cho mẫu file cũ
       const f = fold(v);
       if (!f) return;
       let k = null;
@@ -233,17 +302,19 @@
       else if (f.includes('MOBIFONE') && f.includes('QUA NV')) k = 'MBF';
       if (k && cats[k] == null) cats[k] = i;
     });
+    const nhap = new Set(KPI_COLS.filter(c => c.nhap).map(c => c.k));
     const cMa = colIndex(H, 'Mã NV'), cDv = colIndex(H, 'Đơn vị'), cTen = colLike(H, f => f.startsWith('HO VA TEN') || f === 'HO TEN');
     const nv = [];
-    let start = h + 1;
-    if (rows[start] && rows[start].some(c => /SO LUONG|TY LE/.test(fold(c)))) start++;
-    for (let r = start; r < rows.length; r++) {
+    for (let r = h + 2; r < rows.length; r++) {   // dòng tiêu đề thứ 2: "Số lượng | Tỷ lệ"
       const row = rows[r];
       const ma = clean(row[cMa]);
       if (!ma) continue;
-      const kh = {}, w = {};
-      for (const k of Object.keys(cats)) { kh[k] = toNum(row[cats[k]]); w[k] = toNum(row[cats[k] + 1]); }
-      nv.push({ ma, donvi: cDv >= 0 ? clean(row[cDv]) : '', ten: cTen >= 0 ? clean(row[cTen]) : '', kh, w });
+      const kh = {}, w = {}, th = {};
+      for (const k of Object.keys(cats)) {
+        kh[k] = toNum(row[cats[k]]); w[k] = toNum(row[cats[k] + 1]);
+        if (nhap.has(k)) th[k] = toNum(row[cats[k] + 2]);
+      }
+      nv.push({ ma, donvi: cDv >= 0 ? clean(row[cDv]) : '', ten: cTen >= 0 ? clean(row[cTen]) : '', kh, w, th });
     }
     // bảng giá gói
     const gia = {};
@@ -262,10 +333,11 @@
     return { kind: 'kpinv', thang, nam, nv, gia, cats: Object.keys(cats) };
   }
 
+  // giống Map-ChiTieu của BaoCao_KPI_NV.ps1 (xét theo thứ tự, bỏ khoảng trắng)
   const DC_CHI_TIEU = [
-    ['WIFI', /WIFI/], ['KPP', /KPP/], ['THGT', /THGT|SAYMEE/], ['FIBER', /FIBER/], ['MBF', /MOBIFONE/]
+    ['WIFI', /WIFI|FWD/], ['FIBER', /FIBER/], ['KPP', /KPP|C2C/], ['THGT', /THGT|SAYMEE/], ['MBF', /MOBIFONE|^NV$/]
   ];
-  function dcKey(s) { const f = fold(s); for (const [k, re] of DC_CHI_TIEU) if (re.test(f)) return k; return null; }
+  function dcKey(s) { const f = fold(s).replace(/\s/g, ''); for (const [k, re] of DC_CHI_TIEU) if (re.test(f)) return k; return null; }
   function parseDieuChinh(rows) {
     const h = findHeader(rows, ['Từ mã NV', 'Sang mã NV']);
     const H = rows[h];
@@ -409,13 +481,16 @@
     return [...new Set(out)];
   }
 
-  // ===== Báo cáo KPI nhân viên (mục 3b) =====
+  // ===== Báo cáo KPI nhân viên (giống BaoCao_KPI_NV.ps1, HUONG_DAN mục 3) =====
+  // match: cụm nhận diện trong tên chỉ tiêu (bỏ dấu, bỏ khoảng trắng); nhap: số thực hiện nhập tay ở cột "Thực hiện".
   const KPI_COLS = [
-    { k: 'MBF', name: 'MobiFone qua NV', th: 'MobiFone<br>qua NV' },
-    { k: 'KPP', name: 'MobiFone qua KPP', th: 'MobiFone<br>qua KPP' },
-    { k: 'THGT', name: 'THGT qua NV', th: 'THGT<br>qua NV' },
-    { k: 'WIFI', name: 'MobiWifi 5G', th: 'MobiWifi<br>5G' },
-    { k: 'FIBER', name: 'Mobi Fiber', th: 'Mobi<br>Fiber' }
+    { k: 'C2C', name: 'Điểm bán C2C', th: 'Điểm bán<br>C2C', match: 'DIEMBANC2C', nhap: true },
+    { k: 'MBF', name: 'MobiFone qua NV', th: 'MobiFone<br>qua NV', match: 'MOBIFONEPTMQUANV' },
+    { k: 'KPP', name: 'MobiFone qua KPP', th: 'MobiFone<br>qua KPP', match: 'MOBIFONEPTMQUAKPP' },
+    { k: 'THGT', name: 'THGT qua NV', th: 'THGT<br>qua NV', match: 'THGTPTMQUANV' },
+    { k: 'DT', name: 'Doanh thu (tr.đ)', th: 'Doanh thu<br>(tr.đ)', match: 'DOANHTHUPHANPHOI', nhap: true },
+    { k: 'WIFI', name: 'MobiWifi 5G', th: 'MobiWifi<br>5G', match: 'MOBIWIFI' },
+    { k: 'FIBER', name: 'Mobi Fiber', th: 'Mobi<br>Fiber', match: 'MOBIFIBER' }
   ];
   function buildKpiNv(store, nam, thang) {
     const warn = [];
@@ -426,9 +501,17 @@
     if (!nam) nam = kn.nam || latestYearWithMonth(store, thang) || new Date().getFullYear();
     const map = nvMap(store.ds);
     if (!store.ds) warn.push('Chưa nạp Danh sach NV: không kiểm tra được thời gian công tác và nhóm kênh.');
+    // Chỉ tiêu có trong file KPI (file đã lưu trước khi có cột C2C/Doanh thu: suy từ KH)
+    const coCot = new Set(kn.cats || KPI_COLS.filter(c => kn.nv.some(n => n.kh && c.k in n.kh)).map(c => c.k));
+    const cols = KPI_COLS.filter(c => coCot.has(c.k));
     const plan = new Map(kn.nv.map(n => [up(n.ma), n]));
-    const th = new Map(kn.nv.map(n => [up(n.ma), { MBF: 0, KPP: 0, THGT: 0, WIFI: 0, FIBER: 0 }]));
-    const winOk = (code, d) => { const e = map.get(code); return e ? inWin(e, d) : !store.ds; };
+    const th = new Map(kn.nv.map(n => {
+      const t = {};
+      for (const c of cols) t[c.k] = c.nhap ? ((n.th || {})[c.k] == null ? null : n.th[c.k]) : 0;
+      return [up(n.ma), t];
+    }));
+    // Mã không có trong Danh sach NV: không giới hạn thời gian (như PowerShell)
+    const winOk = (code, d) => { const e = map.get(code); return e ? inWin(e, d) : true; };
     const gia = kn.gia || {};
     const missingPack = new Map();
     const detail = [];
@@ -440,85 +523,126 @@
       if (d < m0 || d > m1) continue;
       if (d > maxD) maxD = d;
       const code = r[5], loai = r[3], sme = isSaymee(loai);
-      let target = null, kpp = false;
-      if (plan.has(code)) target = code;
-      else if (/_C2C$/.test(code) && plan.has(code.replace(/_C2C$/, ''))) { target = code.replace(/_C2C$/, ''); kpp = true; }
-      if (!target) continue;
-      if (kpp && !map.has(code) && store.ds) continue;    // NV không có mã C2C trong danh sách
+      const kpp = /_C2C$/.test(code), target = kpp ? code.replace(/_C2C$/, '') : code;
+      if (!plan.has(target)) continue;
       if (!winOk(code, d)) continue;
+      if (!r[4]) continue;   // không có mã gói: không tính
       const p = gia[r[4]];
-      if (p === undefined) { const g = r[4] || '(không có mã gói)'; missingPack.set(g, (missingPack.get(g) || 0) + 1); continue; }
+      if (p === undefined) { missingPack.set(r[4], (missingPack.get(r[4]) || 0) + 1); continue; }
       if (p == null || p < GIA_GOI_TOI_THIEU) continue;
       const t = th.get(target);
-      const add = (k, lab) => { t[k]++; detail.push([lab, fmtD(d), r[0], loai, r[4], p, code, plan.get(target).ma, name(target)]); };
+      const add = (k, lab) => { if (!(k in t)) return; t[k]++; detail.push([lab, fmtD(d), r[0], loai, r[4], p, code, plan.get(target).ma, name(target)]); };
       if (kpp) { if (!sme) add('KPP', 'KPP'); continue; }
       if (sme) add('THGT', 'THGT'); else add('MBF', 'NV');
       if (LOAI_WIFI.includes(loai)) add('WIFI', 'WIFI');
     }
-    let fiberTo = 0;
-    for (const f of store.fiber) if (f.from <= m1 && f.to >= m0) fiberTo = Math.max(fiberTo, Math.min(f.to, m1));
+    // CT1 – Điểm bán C2C: mỗi Mã C2C giới thiệu của NV có >= 1 GD trong tháng = 1 điểm.
+    // Tháng có GD C2C thì thay số nhập tay; chưa có file C2C phủ tháng thì giữ số nhập tay.
+    let c2cTuDong = false;
+    if (coCot.has('C2C')) {
+      const diem = new Set();
+      for (const r of allC2c(store.c2c)) {
+        if (r[1] < m0 || r[1] > m1) continue;
+        c2cTuDong = true;
+        if (plan.has(r[2])) diem.add(r[2] + '|' + r[3]);
+      }
+      if (c2cTuDong) {
+        for (const t of th.values()) t.C2C = 0;
+        for (const k of diem) th.get(k.split('|')[0]).C2C++;
+      }
+    }
     for (const r of allFiber(store.fiber)) {
       const d = r[2];
       if (d < m0 || d > m1 || !fiberCounted(r)) continue;
       const code = r[3];
-      if (!plan.has(code) || !winOk(code, d)) continue;
+      if (!plan.has(code) || !winOk(code, d) || !('FIBER' in th.get(code))) continue;
       th.get(code).FIBER++;
       detail.push(['FIBER', fmtD(d), r[0], r[6], r[4], r[5], code, plan.get(code).ma, name(code)]);
     }
-    // điều chỉnh thủ công
+    // điều chỉnh thủ công: trừ NV chuyển, cộng NV nhận (một trong hai có thể để trống)
     const mk = `${String(thang).padStart(2, '0')}/${nam}`;
     const adj = new Map(), adjNotes = [];
     const dcs = (store.dc ? store.dc.list : []).filter(x => x.thang === mk);
     for (const x of dcs) {
-      const k = dcKey(x.chiTieu), a = up(x.tu), b = up(x.sang);
-      if (!k) { warn.push(`Điều chỉnh: không nhận ra chỉ tiêu "${x.chiTieu}".`); continue; }
-      if (!th.has(a) || !th.has(b)) { warn.push(`Điều chỉnh: mã ${!th.has(a) ? x.tu : x.sang} không có trong file KPI NV.`); continue; }
-      th.get(a)[k] -= x.sl; th.get(b)[k] += x.sl;
-      const ka = a + '|' + k, kb = b + '|' + k;
-      adj.set(ka, (adj.get(ka) || 0) - x.sl); adj.set(kb, (adj.get(kb) || 0) + x.sl);
-      adjNotes.push({ k, a, b, sl: x.sl, ghiChu: x.ghiChu });
-      detail.unshift(['DC-' + k, '', x.sotb, '', `Điều chỉnh ${x.sl} TB`, x.ghiChu, x.tu, plan.get(b).ma, name(b)]);
+      const k = dcKey(x.chiTieu), a = up(x.tu), b = up(x.sang), sl = Math.round(x.sl) || 1;
+      if (!k || !coCot.has(k)) { warn.push(`Điều chỉnh: không nhận ra chỉ tiêu "${x.chiTieu}".`); continue; }
+      if ((a && !th.has(a)) || (b && !th.has(b))) { warn.push(`Điều chỉnh: mã ${a && !th.has(a) ? x.tu : x.sang} không có trong file KPI NV.`); continue; }
+      if (a) { th.get(a)[k] -= sl; adj.set(a + '|' + k, (adj.get(a + '|' + k) || 0) - sl); }
+      if (b) { th.get(b)[k] += sl; adj.set(b + '|' + k, (adj.get(b + '|' + k) || 0) + sl); }
+      adjNotes.push({ k, a, b, sl, ghiChu: x.ghiChu });
+      detail.unshift(['DC-' + k, '', x.sotb, '', `Điều chỉnh ${sl} TB`, x.ghiChu, x.tu, b ? plan.get(b).ma : '', b ? name(b) : '']);
     }
     for (const [code, t] of th) for (const k of Object.keys(t)) if (t[k] < 0) warn.push(`Điều chỉnh làm ${name(code) || code} âm ${k}: ${t[k]}.`);
-    if (missingPack.size) warn.push('Gói cước không có trong bảng giá (không tính): ' + [...missingPack].map(([g, n]) => `${g} (${n})`).join(', ') + '.');
+    if (missingPack.size) warn.push('Gói cước không có trong bảng giá (không tính): ' + [...missingPack].sort((a, b) => b[1] - a[1]).map(([g, n]) => `${g} (${n})`).join(', ') + '.');
     if (!store.na.some(e => e.nam === nam && e.thang === thang)) warn.push(`Chưa có file NEW_ACTIVE tháng ${thang}/${nam}.`);
 
-    // ngày số liệu & tiến độ thời gian
-    const endD = Math.max(maxD, fiberTo) || m1;
+    // ngày số liệu & tiến độ thời gian: theo ngày kích hoạt mới nhất trong NEW_ACTIVE (như PowerShell)
+    let fiberTo = 0;
+    for (const f of store.fiber) if (f.from <= m1 && f.to >= m0) fiberTo = Math.max(fiberTo, Math.min(f.to, m1));
+    const endD = maxD || fiberTo || m1;
     const ngay = dOf(endD), soNgay = daysIn(nam, thang);
     const tienDo = ngay / soNgay;
 
-    // gom nhóm theo "Tình trạng" trong Danh sach NV
+    // Điểm KPI HT (% BQ): bình quân có trọng số "Tỷ lệ" (trống = 1) các chỉ tiêu có KH > 0;
+    // chỉ tiêu nhập tay chưa có số thực hiện: bỏ khỏi cả tử và mẫu. Nhóm NVBH: trần 120%, CT6 gộp, CT7.
+    const chuaNhap = new Set();
+    const kenh = code => { const e = map.get(code); return e ? up(e.n.loai) : ''; };
     const GN = { NVBH: 'Nhân viên bán hàng', GDV: 'Giao dịch viên', AM: 'AM', FIBER: 'Nhân viên Fiber' };
     const ORDER = ['NVBH', 'AM', 'GDV', 'FIBER'];
     const rows = kn.nv.map(n => {
       const code = up(n.ma), e = map.get(code);
-      let g = up(e ? e.n.loai : '') || up(n.donvi) || 'KHÁC';
-      const t = th.get(code);
-      const cells = KPI_COLS.map(c => {
-        const kh = n.kh[c.k], v = t[c.k], w = n.w[c.k];
-        return { k: c.k, kh: kh == null ? null : kh, th: v, w: w == null ? 0 : w, adj: adj.get(code + '|' + c.k) || 0,
-          p: kh ? v / kh * 100 : null };
+      const g = kenh(code) || up(n.donvi) || 'KHÁC';
+      const t = th.get(code), nvbh = g === NVBH_NHOM;
+      const w = k => { const v = (n.w || {})[k]; return v ? v : 1; };
+      let sw = 0, sp = 0;
+      for (const c of cols) {
+        const kh = n.kh[c.k];
+        if (!(kh > 0)) continue;
+        if (t[c.k] == null) { chuaNhap.add(c.k); continue; }
+        if (nvbh && (c.k === 'WIFI' || c.k === 'FIBER')) continue;
+        let p = t[c.k] / kh;
+        if (nvbh) p = Math.min(p, DIEM_TRAN);
+        sw += w(c.k); sp += w(c.k) * p;
+      }
+      if (nvbh) {
+        const kh6 = (+n.kh.WIFI || 0) + (+n.kh.FIBER || 0), th6 = (+t.WIFI || 0) + (+t.FIBER || 0);
+        const w6 = (n.w || {}).WIFI || (n.w || {}).FIBER;
+        if (kh6 > 0 && w6) { sw += w6; sp += w6 * Math.min(th6 / kh6, DIEM_TRAN); }
+        sw += CT7_TY_TRONG; sp += CT7_TY_TRONG;
+      }
+      const cells = cols.map(c => {
+        const kh = n.kh[c.k], v = t[c.k];
+        return { k: c.k, kh: kh == null ? null : kh, th: v, w: (n.w || {})[c.k] || 0, adj: adj.get(code + '|' + c.k) || 0,
+          p: kh && v != null ? v / kh * 100 : null };
       });
-      const act = cells.filter(c => c.kh > 0);
-      const sw = act.reduce((s, c) => s + c.w, 0);
-      const bq = act.length ? (sw > 0 ? act.reduce((s, c) => s + c.w * c.p, 0) / sw : act.reduce((s, c) => s + c.p, 0) / act.length) : null;
-      return { ma: n.ma, ten: n.ten || (e ? e.n.ten : ''), donvi: shortUnit(n.donvi || (e ? e.n.donvi : '')), g, cells, bq };
+      return { ma: n.ma, ten: n.ten || (e ? e.n.ten : ''), donvi: shortUnit(n.donvi || (e ? e.n.donvi : '')), g, nvbh, cells,
+        bq: sw > 0 ? sp / sw * 100 : null };
     });
+    // Chỉ hiện cột nhập tay khi có NV được giao KH
+    const tkh = k => rows.reduce((s, r) => s + (r.cells.find(x => x.k === k).kh || 0), 0);
+    const colsHien = cols.filter(c => !c.nhap || tkh(c.k) > 0);
+    const hien = new Set(colsHien.map(c => c.k));
+    rows.forEach(r => { r.cells = r.cells.filter(c => hien.has(c.k)); });
     const groups = [];
     const gKeys = [...new Set(rows.map(r => r.g))].sort((a, b) => {
       const ia = ORDER.indexOf(a), ib = ORDER.indexOf(b);
       return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
     });
     for (const g of gKeys) groups.push({ g, label: GN[g] || g, rows: rows.filter(r => r.g === g) });
-    const totals = KPI_COLS.map(c => {
-      const kh = rows.reduce((s, r) => s + (r.cells.find(x => x.k === c.k).kh || 0), 0);
-      const v = rows.reduce((s, r) => s + r.cells.find(x => x.k === c.k).th, 0);
-      return { k: c.k, name: c.name, kh, th: v, p: kh ? v / kh * 100 : null };
+    const totals = colsHien.map(c => {
+      const cs = rows.map(r => r.cells.find(x => x.k === c.k));
+      const kh = cs.reduce((s, x) => s + (x.kh || 0), 0);
+      const coTh = cs.some(x => x.kh > 0 && x.th != null);
+      const v = cs.reduce((s, x) => s + (x.th || 0), 0);
+      return { k: c.k, name: c.name, kh, th: c.nhap && !coTh ? null : v, p: kh > 0 && (!c.nhap || coTh) ? v / kh * 100 : null };
     });
     const notes = adjText(adjNotes, code => name(code) || code);
+    const nvbhNote = rows.some(r => r.nvbh) ? {
+      c2cTuDong, chuaNhap: colsHien.filter(c => c.nhap && chuaNhap.has(c.k)).map(c => c.name)
+    } : null;
     detail.sort((a, b) => (a[0].startsWith('DC') ? -1 : 0) - (b[0].startsWith('DC') ? -1 : 0) || a[0].localeCompare(b[0]) || a[1].split('/').reverse().join('').localeCompare(b[1].split('/').reverse().join('')));
-    return { nam, thang, ngay, soNgay, tienDo, groups, totals, notes, warn, detail, taoLuc: nowText(), kpiFile: kn.name };
+    return { nam, thang, ngay, soNgay, tienDo, cols: colsHien.map(c => ({ k: c.k, name: c.name, th: c.th, nhap: !!c.nhap })),
+      groups, totals, notes, nvbhNote, warn, detail, taoLuc: nowText(), kpiFile: kn.name };
   }
   const KPI_DETAIL_HEAD = ['Chi tieu', 'Ngay', 'So TB / User Fiber', 'Loai TB / Dich vu', 'Ma goi / Tinh trang HD', 'Gia thang / Chan cat', 'Ma PT', 'Ma NV', 'Ten NV'];
 
@@ -541,8 +665,9 @@
       const o = g.get(key);
       o.sum += x.sl; o.to.set(x.b, (o.to.get(x.b) || 0) + x.sl);
     }
-    return [...g.values()].map(o => `${lab[o.k]}: chuyển ${o.sum} TB từ ${nm(o.a)} sang ` +
-      [...o.to].map(([b, n]) => o.to.size > 1 ? `${nm(b)} ${n}` : nm(b)).join(', '));
+    const ten = c => (c ? nm(c) : '') || '(ngoài)';
+    return [...g.values()].map(o => `${lab[o.k]}: chuyển ${o.sum} TB từ ${ten(o.a)} sang ` +
+      [...o.to].map(([b, n]) => o.to.size > 1 ? `${ten(b)} ${n}` : ten(b)).join(', '));
   }
 
   // ===== CSV =====

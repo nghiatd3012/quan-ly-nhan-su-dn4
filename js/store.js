@@ -14,9 +14,10 @@
   function sao(tt) { return { data: Object.assign({}, tt.data) }; }
 
   function chuyenStore(tt) {
-    const s = { na: [], fiber: [], ds: null, kpiv: [], kpinv: [], dc: null };
+    const s = { na: [], fiber: [], c2c: [], ds: null, kpiv: [], kpinv: [], dc: null };
     for (const [k, v] of Object.entries(tt.data)) {
       if (k.startsWith('na:')) s.na.push(v);
+      else if (k.startsWith('c2c:')) s.c2c.push(v);
       else if (k.startsWith('fiber:')) s.fiber.push(v);
       else if (k.startsWith('kpiv:')) s.kpiv.push(v);
       else if (k.startsWith('kpinv:')) s.kpinv.push(v);
@@ -70,6 +71,16 @@
       return tb('ok', `${ten} → Fiber kỳ ${C.fmtD(p.from)} – ${C.fmtD(p.to)} (${fmtN(p.recs.length)} HĐ)` +
         (removed.length ? `; thay ${removed.map(esc).join(', ')}` : '') + '.');
     }
+    if (p.kind === 'c2c') {
+      if (!p.recs.length) return giu('warn', `${ten}: file C2C không có giao dịch nào.`);
+      const removed = [];
+      for (const e of s.c2c) {
+        if (e.from >= p.from && e.to <= p.to) { removed.push(e.name); delete d[`c2c:${e.from}-${e.to}`]; }
+      }
+      d[`c2c:${p.from}-${p.to}`] = Object.assign({}, base, { kind: 'c2c', from: p.from, to: p.to, recs: p.recs });
+      return tb('ok', `${ten} → Giao dịch C2C kỳ ${C.fmtD(p.from)} – ${C.fmtD(p.to)} (${fmtN(p.recs.length)} GD)` +
+        (removed.length ? `; thay ${removed.map(esc).join(', ')}` : '') + '.');
+    }
     if (p.kind === 'ds') {
       d.ds = Object.assign({}, base, { kind: 'ds', nv: p.nv });
       return tb('ok', `${ten} → Danh sách NV (${p.nv.length} mã).`);
@@ -82,8 +93,8 @@
     if (p.kind === 'kpinv') {
       if (!p.thang) return giu('err', `${ten}: file KPI NV không rõ tháng. Đặt tên dạng "KPI NV T11.xlsx" hoặc sheet "CT T11".`);
       const nam = p.nam || latestYearWith(s, p.thang) || new Date().getFullYear();
-      d[`kpinv:${nam}-${p2(p.thang)}`] = Object.assign({}, base, { kind: 'kpinv', nam, thang: p.thang, nv: p.nv, gia: p.gia });
-      const miss = ['MBF', 'KPP', 'THGT', 'WIFI', 'FIBER'].filter(k => !(p.cats || []).includes(k));
+      d[`kpinv:${nam}-${p2(p.thang)}`] = Object.assign({}, base, { kind: 'kpinv', nam, thang: p.thang, nv: p.nv, gia: p.gia, cats: p.cats });
+      const miss = ['C2C', 'MBF', 'KPP', 'THGT', 'DT', 'WIFI', 'FIBER'].filter(k => !(p.cats || []).includes(k));
       const soGoi = Object.keys(p.gia || {}).length;
       return tb(miss.length ? 'warn' : 'ok', `${ten} → KPI NV tháng ${p2(p.thang)}/${nam} (${p.nv.length} NV, bảng giá ${soGoi} gói)` +
         (miss.length ? `. Không thấy cột chỉ tiêu: ${miss.join(', ')}` : '') + (soGoi ? '' : '. Thiếu sheet "Mã gói cước data"') + '.');

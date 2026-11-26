@@ -2,13 +2,25 @@
 // Mọi giới hạn theo quyền do Apps Script quyết; trang chỉ hiển thị những gì máy chủ trả về.
 (function () {
   var el = UI.el;
+  // Mọi chỉ tiêu có thể có (đúng thứ tự BaoCao_KPI_NV.ps1); mỗi báo cáo chỉ hiện các cột trong R.cols.
   var COT = [
+    { k: 'C2C', ngan: 'C2C', ten: 'Điểm bán C2C có giao dịch' },
     { k: 'MBF', ngan: 'MBF NV', ten: 'MobiFone qua NV' },
     { k: 'KPP', ngan: 'KPP', ten: 'MobiFone qua KPP' },
     { k: 'THGT', ngan: 'THGT', ten: 'THGT qua NV' },
+    { k: 'DT', ngan: 'DT', ten: 'Doanh thu phân phối (tr.đ)' },
     { k: 'WIFI', ngan: 'Wifi', ten: 'MobiWifi 5G' },
     { k: 'FIBER', ngan: 'Fiber', ten: 'Mobi Fiber' }
   ];
+  // Cột theo các mã chỉ tiêu có trong báo cáo (R.cols; báo cáo cũ: suy từ ô của các dòng)
+  function cotTheo(ks) { return COT.filter(function (c) { return ks.indexOf(c.k) >= 0; }); }
+  function maCot(R) {
+    if (R.cols) return R.cols.map(function (c) { return c.k; });
+    var ks = [];
+    (R.groups || []).forEach(function (g) { (g.rows || []).forEach(function (r) { (r.cells || []).forEach(function (c) { if (ks.indexOf(c.k) < 0) ks.push(c.k); }); }); });
+    return ks;
+  }
+  function so(v) { return v == null ? '–' : String(Math.round(v * 10) / 10).replace('.', ','); }
   var TRU = '−'; // dấu trừ
   var nho = { cuaAi: null, thang: null, cv: '', nlv: '', xemMa: null };
 
@@ -97,7 +109,7 @@
     }
     veLai();
     the.appendChild(cuon);
-    the.appendChild(el('p', { class: 'hint', text: 'Ô: % hoàn thành và thực hiện/kế hoạch · % BQ có trọng số theo "Tỷ lệ" · nhãn tím là số TB điều chỉnh.' }));
+    the.appendChild(el('p', { class: 'hint', text: 'Ô: % hoàn thành và thực hiện/kế hoạch · % BQ = Điểm KPI HT, trọng số theo "Tỷ lệ" (NVBH: mỗi chỉ tiêu tối đa 120%, Wifi + Fiber chấm gộp, cộng chỉ tiêu Vùng giao 10% tính đạt) · "chưa có": chỉ tiêu nhập tay chưa có số, chưa tính · nhãn tím là số TB điều chỉnh.' }));
     if (R.notes && R.notes.length) {
       the.appendChild(el('ul', { class: 'ghi-chu' }, R.notes.map(function (n) { return el('li', { text: 'Điều chỉnh: ' + n }); })));
     }
@@ -115,20 +127,25 @@
   function oPhanTram(c, tienDo) {
     var td = el('td', { dataset: { k: c.k, th: String(c.th || 0), kh: String(c.kh || 0) } });
     if (c.kh == null) { td.appendChild(el('span', { class: 'trong', text: '–' })); }
-    else {
+    else if (c.th == null) {
+      td.title = 'Chưa có số thực hiện (chưa tính vào % BQ)';
+      td.appendChild(el('div', { class: 'trong', text: 'chưa có' }));
+      td.appendChild(el('small', { class: 'so', text: '–/' + so(c.kh) }));
+    } else {
       var p = c.kh ? c.th / c.kh * 100 : null;
       td.className = mau(p, tienDo);
       td.appendChild(el('div', { text: pt(p) }));
-      td.appendChild(el('small', { class: 'so', text: Math.round(c.th) + '/' + Math.round(c.kh) }));
+      td.appendChild(el('small', { class: 'so', text: so(c.th) + '/' + so(c.kh) }));
     }
     if (c.adj) td.appendChild(el('span', { class: 'adj', text: (c.adj > 0 ? '+' : TRU) + Math.abs(c.adj) }));
     return td;
   }
 
   function bangNv(R, hien, nhanTong) {
+    var COT = cotTheo(maCot(R));
     var tb = el('tbody');
     var tong = {}, bqs = [];
-    COT.forEach(function (c) { tong[c.k] = { k: c.k, th: 0, kh: 0, coKh: false }; });
+    COT.forEach(function (c) { tong[c.k] = { k: c.k, th: 0, kh: 0, coKh: false, coTh: false }; });
     hien.forEach(function (x) {
       tb.appendChild(el('tr', { class: 'grp' }, [el('td', { colspan: String(COT.length + 2), text: (x.g.label || x.g.g) + ' (' + x.rows.length + ')' })]));
       x.rows.forEach(function (r) {
@@ -137,6 +154,7 @@
           var o = (r.cells || []).filter(function (x) { return x.k === c.k; })[0] || { k: c.k, kh: null, th: 0 };
           tr.appendChild(oPhanTram(o, R.tienDo));
           tong[c.k].th += o.th || 0;
+          if (o.th != null && o.kh) tong[c.k].coTh = true;
           if (o.kh != null) { tong[c.k].kh += o.kh; tong[c.k].coKh = true; }
         });
         tr.appendChild(el('td', { class: mau(r.bq, R.tienDo) + ' bq', dataset: { k: 'BQ' }, text: pt(r.bq) }));
@@ -147,7 +165,7 @@
     if (!hien.length) tb.appendChild(el('tr', null, [el('td', { colspan: String(COT.length + 2), class: 'trong', text: 'Không có nhân viên nào khớp bộ lọc.' })]));
     else if (nhanTong) {
       var tr = el('tr', { class: 'tot' }, [el('td', { class: 'ten', text: nhanTong })]);
-      COT.forEach(function (c) { var t = tong[c.k]; tr.appendChild(oPhanTram({ k: c.k, th: t.th, kh: t.coKh ? t.kh : null }, R.tienDo)); });
+      COT.forEach(function (c) { var t = tong[c.k]; tr.appendChild(oPhanTram({ k: c.k, th: t.coTh || !t.kh ? t.th : null, kh: t.coKh ? t.kh : null }, R.tienDo)); });
       var bqTb = bqs.length ? bqs.reduce(function (a, b) { return a + b; }, 0) / bqs.length : null;
       tr.appendChild(el('td', { class: mau(bqTb, R.tienDo) + ' bq', dataset: { k: 'BQ' }, title: 'Bình quân % BQ các nhân viên đang hiện', text: pt(bqTb) }));
       tb.appendChild(tr);
@@ -186,7 +204,9 @@
       var thead = el('thead', null, [el('tr', null, [el('th', { text: 'Chỉ tiêu' })]
         .concat(ls.map(function (x) { return el('th', { title: 'Tháng ' + x.thang.slice(5) + '/' + x.thang.slice(0, 4), text: 'T' + x.thang.slice(5) }); })))]);
       var tb = el('tbody');
-      COT.forEach(function (c) {
+      var ks = [];
+      ls.forEach(function (x) { (x.row.cells || []).forEach(function (c) { if (ks.indexOf(c.k) < 0) ks.push(c.k); }); });
+      cotTheo(ks).forEach(function (c) {
         var tr = el('tr', null, [el('td', { text: c.ten })]);
         ls.forEach(function (x) {
           var o = (x.row.cells || []).filter(function (y) { return y.k === c.k; })[0] || { k: c.k, kh: null, th: 0 };

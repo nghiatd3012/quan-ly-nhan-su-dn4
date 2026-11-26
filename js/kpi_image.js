@@ -2,7 +2,8 @@
 (function (root) {
   'use strict';
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const fmtN = n => String(Math.round(n));
+  const fmtN = n => n == null ? '–' : String(Math.round(n * 10) / 10).replace('.', ',');
+  const diem = p => p == null ? '–' : String(Math.round(p));
   const pctS = p => p == null ? '–' : Math.round(p) + '%';
 
   const CSS = `
@@ -36,6 +37,10 @@
 .kimg .ok{background:#dcf5e5}.kimg .ok em{color:#14813e}.kimg .mid{background:#fff3cf}.kimg .mid em{color:#9a6400}.kimg .low{background:#fde3e1}.kimg .low em{color:#bd281d}
 .kimg .cd.ok,.kimg .cd.mid,.kimg .cd.low{background:#fff}
 .kimg td.na{color:#b8c0cc;background:#f7f8fa;font-size:18px}
+.kimg td.nd{background:#f3f4f8}.kimg td.nd b{color:#9aa3b2}.kimg td.nd em{color:#8a94a6;font-weight:600;font-size:13px}
+.kimg .cd .v em.cc{font-size:15px;font-weight:600;color:#8a94a6;white-space:nowrap}
+.kimg .nvb{margin-top:6px;font-size:14px;color:#2d4a72;padding:0 4px}
+.kimg .ti.hep{min-width:400px;max-width:470px}
 .kimg i.dc{position:absolute;top:2px;right:3px;font-style:normal;font-size:12px;font-weight:700;color:#fff;background:#7a4cc2;border-radius:6px;padding:0 5px;line-height:16px}
 .kimg .dcn{margin-top:6px;font-size:14px;color:#4a3478;padding:0 4px}.kimg .dcn i.dc{position:static;margin-right:6px;display:inline-block}
 .kimg .ft{display:flex;justify-content:space-between;font-size:14px;color:#566479;margin-top:9px;padding:0 4px;gap:16px}
@@ -44,8 +49,15 @@
 
   function cls(p, tienDo) { return p == null ? '' : p >= 100 ? 'ok' : (p >= tienDo * 100 ? 'mid' : 'low'); }
 
+  // Cột của báo cáo: R.cols (bản mới); báo cáo cũ lưu trước đó: suy từ các ô của dòng đầu
+  function cotCua(R) {
+    if (R.cols) return R.cols;
+    const g0 = (R.groups[0] || { rows: [] }).rows[0], ks = g0 ? g0.cells.map(c => c.k) : [];
+    return root.Core.KPI_COLS.filter(c => ks.indexOf(c.k) >= 0);
+  }
+
   function tableHtml(groups, startNo, R) {
-    const cols = root.Core.KPI_COLS;
+    const cols = cotCua(R);
     let no = startNo, body = '';
     for (const g of groups) {
       body += `<tr class="gh"><td colspan="${cols.length + 3}">${esc(g.label)} <span>(${g.rows.length})</span></td></tr>`;
@@ -54,15 +66,16 @@
         for (const c of r.cells) {
           const badge = c.adj ? `<i class="dc">${c.adj > 0 ? '+' : ''}${c.adj}</i>` : '';
           if (c.kh == null) { body += `<td class="k na">${badge}–</td>`; continue; }
+          if (c.th == null) { body += `<td class="k nd">${badge}<div><b>–</b><s>/${fmtN(c.kh)}</s></div><em>chưa có</em></td>`; continue; }
           if (!c.kh) { body += `<td class="k na">${badge}<div><b>${fmtN(c.th)}</b><s>/0</s></div><em>–</em></td>`; continue; }
           body += `<td class="k ${cls(c.p, R.tienDo)}">${badge}<div><b>${fmtN(c.th)}</b><s>/${fmtN(c.kh)}</s></div><em>${pctS(c.p)}</em></td>`;
         }
-        body += r.bq == null ? `<td class="k bq na">–</td>` : `<td class="k bq ${cls(r.bq, R.tienDo)}"><em>${pctS(r.bq)}</em></td>`;
+        body += r.bq == null ? `<td class="k bq na">–</td>` : `<td class="k bq ${cls(r.bq, R.tienDo)}"><em>${diem(r.bq)}</em></td>`;
         body += '</tr>';
       }
     }
     const colg = `<colgroup><col class="c1"><col class="c2">${cols.map(() => '<col class="c3">').join('')}<col class="c4"></colgroup>`;
-    const head = `<thead><tr><th>#</th><th class="l">Nhân viên</th>${cols.map(c => `<th>${c.th}</th>`).join('')}<th>% BQ</th></tr></thead>`;
+    const head = `<thead><tr><th>#</th><th class="l">Nhân viên</th>${cols.map(c => `<th>${c.th}</th>`).join('')}<th>Điểm<br>KPI HT</th></tr></thead>`;
     return { html: `<table>${colg}${head}<tbody>${body}</tbody></table>`, next: no };
   }
 
@@ -83,14 +96,18 @@
   function fragment(R) {
     const p2 = n => String(n).padStart(2, '0');
     const sub = `Số liệu 01/${p2(R.thang)} – ${p2(R.ngay)}/${p2(R.thang)}/${R.nam} · Tiến độ thời gian ${Math.round(R.tienDo * 100)}% (${R.ngay}/${R.soNgay} ngày) · Gói cước ≥ 100.000đ/tháng`;
-    const cards = R.totals.map(t => `<div class="cd ${cls(t.p, R.tienDo)}"><div class="t">${esc(t.name)}</div><div class="v"><b>${fmtN(t.th)}</b><s>/${fmtN(t.kh)}</s><em>${pctS(t.p)}</em></div></div>`).join('');
+    const cards = R.totals.map(t => `<div class="cd ${cls(t.p, R.tienDo)}"><div class="t">${esc(t.name)}</div><div class="v"><b>${fmtN(t.th)}</b><s>/${fmtN(t.kh)}</s>` +
+      (t.th == null ? '<em class="cc">chưa có</em>' : `<em>${pctS(t.p)}</em>`) + '</div></div>').join('');
+    const nb = R.nvbhNote;
+    const nvbh = nb ? '<div class="nvb"><b>Điểm KPI HT NVBH</b> = Σ min(%HT,120%) × tỷ trọng: C2C 10 · qua NV 20 · KPP 15 · THGT 15 · Doanh thu 20 · Wifi+Fiber gộp 10 · CT Vùng giao 10 (tính đạt)' +
+      (nb.c2cTuDong ? ' · Điểm bán C2C: mỗi điểm có GD C2C trong tháng = 1' : '') + (nb.chuaNhap && nb.chuaNhap.length ? ` · ${esc(nb.chuaNhap.join(', '))}: chưa có số thực hiện, chưa tính` : '') + '</div>' : '';
     const [L, Rr] = split(R.groups);
     const a = tableHtml(L, 1, R), b = Rr.length ? tableHtml(Rr, a.next, R) : { html: '' };
     const notes = R.notes.length ? `<div class="dcn"><i class="dc">±</i><b>Điều chỉnh:</b> ${R.notes.map(esc).join('; ')}</div>` : '';
-    return `<div class="kimg"><div class="hd"><div class="ti"><h1>KPI NHÂN VIÊN VÙNG 4 – THÁNG ${p2(R.thang)}/${R.nam}</h1><p>${sub}</p></div>${cards}</div>
+    return `<div class="kimg"><div class="hd"><div class="ti${cotCua(R).length > 5 ? ' hep' : ''}"><h1>KPI NHÂN VIÊN VÙNG 4 – THÁNG ${p2(R.thang)}/${R.nam}</h1><p>${sub}</p></div>${cards}</div>
 <div class="bd">${a.html}${b.html}</div>
-<div class="ft"><div>Ô: <b>thực hiện</b>/kế hoạch và % · % BQ = bình quân % các chỉ tiêu có KH, trọng số theo "Tỷ lệ" · KPP = mã &lt;NV&gt;_C2C · Cập nhật ${esc(R.taoLuc)}</div>
-<div class="lg"><span><i style="background:#2fb565"></i>Đạt KH</span><span><i style="background:#f2c230"></i>≥ tiến độ</span><span><i style="background:#e8574c"></i>Dưới tiến độ</span></div></div>${notes}</div>`;
+<div class="ft"><div>Ô: <b>thực hiện</b>/kế hoạch và % · Điểm KPI HT = Σ %HT × tỷ trọng các chỉ tiêu có KH (100 = đạt) · KPP = mã &lt;NV&gt;_C2C · Cập nhật ${esc(R.taoLuc)}</div>
+<div class="lg"><span><i style="background:#2fb565"></i>Đạt KH</span><span><i style="background:#f2c230"></i>≥ tiến độ</span><span><i style="background:#e8574c"></i>Dưới tiến độ</span></div></div>${nvbh}${notes}</div>`;
   }
 
   function standalone(R) {

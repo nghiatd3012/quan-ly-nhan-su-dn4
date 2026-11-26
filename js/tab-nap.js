@@ -71,7 +71,7 @@
     var input = el('input', { type: 'file', id: 'nap-file', multiple: true, accept: '.xls,.xlsx,.xlsm', class: 'an-file' });
     input.addEventListener('change', function () { var fs = Array.prototype.slice.call(input.files); input.value = ''; napFile(fs); });
     var vung = el('label', { for: 'nap-file', class: 'drop' }, ['📂 Chạm để chọn file Excel', el('br'),
-      el('small', { text: 'Chọn được nhiều file. Trang tự nhận loại file theo nội dung (NEW_ACTIVE, Fiber, Danh sách NV, KPI Vùng, KPI NV, Điều chỉnh).' })]);
+      el('small', { text: 'Chọn được nhiều file. Trang tự nhận loại file theo nội dung (NEW_ACTIVE, Fiber, Giao dịch C2C, Danh sách NV, KPI Vùng, KPI NV, Điều chỉnh).' })]);
     ['dragenter', 'dragover'].forEach(function (t) { vung.addEventListener(t, function (e) { e.preventDefault(); vung.classList.add('over'); }); });
     ['dragleave', 'drop'].forEach(function (t) { vung.addEventListener(t, function (e) { e.preventDefault(); vung.classList.remove('over'); }); });
     vung.addEventListener('drop', function (e) { napFile(Array.prototype.slice.call(e.dataTransfer.files)); });
@@ -106,6 +106,7 @@
     var chips = el('div', { id: 'nap-tinh-trang' }, [
       chip(naMs.length, naMs.length ? 'NEW_ACTIVE ' + naMs.length + ' tháng' : 'Chưa có NEW_ACTIVE'),
       chip(s.fiber.length, s.fiber.length ? 'Fiber ' + s.fiber.length + ' file' : 'Chưa có Fiber'),
+      chip(s.c2c.length, s.c2c.length ? 'C2C ' + s.c2c.length + ' file' : 'Chưa có C2C'),
       chip(!!s.ds, s.ds ? 'Danh sách NV ' + s.ds.nv.length + ' mã' : 'Chưa có Danh sách NV'),
       chip(s.kpiv.length, s.kpiv.length ? 'KPI Vùng ' + s.kpiv.map(function (k) { return k.nam; }).join(', ') : 'Chưa có KPI Vùng'),
       chip(kpinv.length, kpinv.length ? 'KPI NV ' + kpinv.map(function (k) { return 'T' + p2(k.thang); }).join(', ') : 'Chưa có KPI NV'),
@@ -114,6 +115,7 @@
     var dong = [];
     naMs.forEach(function (e) { dong.push(['na:' + e.nam + '-' + p2(e.thang), 'NEW_ACTIVE', 'T' + p2(e.thang) + '/' + e.nam, fmtN(e.recs.length) + ' TB được tính', e]); });
     s.fiber.slice().sort(function (a, b) { return a.from - b.from; }).forEach(function (e) { dong.push(['fiber:' + e.from + '-' + e.to, 'Fiber', Core.fmtD(e.from) + ' – ' + Core.fmtD(e.to), fmtN(e.recs.length) + ' HĐ', e]); });
+    s.c2c.slice().sort(function (a, b) { return a.from - b.from; }).forEach(function (e) { dong.push(['c2c:' + e.from + '-' + e.to, 'Giao dịch C2C', Core.fmtD(e.from) + ' – ' + Core.fmtD(e.to), fmtN(e.recs.length) + ' GD', e]); });
     if (s.ds) dong.push(['ds', 'Danh sách NV', '', s.ds.nv.length + ' mã', s.ds]);
     s.kpiv.forEach(function (e) { dong.push(['kpiv:' + e.nam, 'KPI Vùng', 'Năm ' + e.nam, '', e]); });
     kpinv.forEach(function (e) { dong.push(['kpinv:' + e.nam + '-' + p2(e.thang), 'KPI NV', 'T' + p2(e.thang) + '/' + e.nam, e.nv.length + ' NV', e]); });
