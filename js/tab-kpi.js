@@ -101,7 +101,7 @@
     var toi = el('div', { class: 'card', id: 'kpi-toi' }, [el('h3', { text: 'KPI của tôi' })]);
     var tong = laQL() ? el('div', { class: 'card', id: 'kpi-tong' }, [el('h3', { text: 'Báo cáo tổng Vùng 4' })]) : null;
     var ds = laQL() ? [['tong', 'Báo cáo tổng', tong], ['nv', 'KPI nhân viên', bang], ['toi', 'KPI của tôi', toi]]
-      : [['toi', 'KPI của tôi', toi], ['nv', 'KPI nhân viên', bang]];
+      : [['nv', 'KPI nhân viên', bang], ['toi', 'KPI của tôi', toi]];   // NV vào thẳng KPI nhân viên chung (26/11/2026)
     if (!ds.some(function (x) { return x[0] === nho.tab; })) nho.tab = ds[0][0];
     var thanh = el('nav', { class: 'tab-con', role: 'tablist', 'aria-label': 'Báo cáo KPI' });
     function mo(id) {
@@ -147,11 +147,11 @@
     nhom.forEach(function (g) { (g.rows || []).forEach(function (r) { tatCa.push(r); }); });
     if (ql && toi) datOChonNv(toi, tatCa);
 
-    // Bộ lọc trên cùng (QL/QT): tháng, chức vụ, nơi làm việc — bảng và ảnh tải về đều theo bộ lọc
-    if (ql) {
-      var chonThang = el('select', { id: 'kpi-thang', 'aria-label': 'Tháng' }, dsThang.map(function (t) { return el('option', { value: t, text: nhanThang(t) }); }));
-      chonThang.value = nho.thang;
-      chonThang.addEventListener('change', function () { nho.thang = chonThang.value; taiBang(the, null); });
+    // Bộ lọc trên cùng: chức vụ, nơi làm việc (mọi người); chọn tháng chỉ QL/QT — bảng và ảnh tải về đều theo bộ lọc
+    {
+      var chonThang = ql ? el('select', { id: 'kpi-thang', 'aria-label': 'Tháng' }, dsThang.map(function (t) { return el('option', { value: t, text: nhanThang(t) }); })) : null;
+      if (chonThang) chonThang.value = nho.thang;
+      if (chonThang) chonThang.addEventListener('change', function () { nho.thang = chonThang.value; taiBang(the, null); });
       var cvs = [], nlvs = [];
       tatCa.forEach(function (r) { if (cvs.indexOf(r.g) < 0) cvs.push(r.g); if (r.donvi && nlvs.indexOf(r.donvi) < 0) nlvs.push(r.donvi); });
       nlvs.sort(function (a, b) { return a.localeCompare(b, 'vi'); });
@@ -166,7 +166,7 @@
       chonCv.value = nho.cv; chonNlv.value = nho.nlv;
       chonCv.addEventListener('change', function () { nho.cv = chonCv.value; veLai(); });
       chonNlv.addEventListener('change', function () { nho.nlv = chonNlv.value; veLai(); });
-      the.appendChild(el('div', { class: 'loc' }, [chonThang, chonCv, chonNlv]));
+      the.appendChild(el('div', { class: 'loc' }, [chonThang, chonCv, chonNlv].filter(Boolean)));
     }
 
     the.appendChild(el('p', { class: 'hint', text: 'Số liệu đến ' + p2(R.ngay) + '/' + p2(R.thang) + '/' + R.nam +
