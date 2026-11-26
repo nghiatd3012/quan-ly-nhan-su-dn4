@@ -110,9 +110,49 @@
 <div class="lg"><span><i style="background:#2fb565"></i>Đạt KH</span><span><i style="background:#f2c230"></i>≥ tiến độ</span><span><i style="background:#e8574c"></i>Dưới tiến độ</span></div></div>${nvbh}${notes}</div>`;
   }
 
+  // ---- Khổ dọc 760px (xem trên điện thoại cầm dọc, giống web báo cáo cũ): 1 bảng, cùng số liệu, cùng STT ----
+  const CSS_DOC = CSS + `
+.kimg.doc{width:760px;padding:14px}
+.kimg.doc .ti{min-width:0;max-width:none;padding:12px 16px}
+.kimg.doc .ti h1{font-size:25px}.kimg.doc .ti p{font-size:14.5px;margin-top:4px}
+.kimg.doc .cds{display:grid;gap:8px;margin:10px 0}
+.kimg.doc .cd{border-left:0;border-top:6px solid #ccc;border-radius:10px;padding:7px 9px 8px}
+.kimg.doc .cd .t{font-size:13px;line-height:1.2;min-height:31px}
+.kimg.doc .cd .v{display:block;margin-top:4px;line-height:1}.kimg.doc .cd .v b{font-size:25px}.kimg.doc .cd .v s{font-size:14px}
+.kimg.doc .cd .v em{display:block;margin-left:0;font-size:21px;margin-top:4px}
+.kimg.doc .cd .v em.cc{font-size:13px}
+.kimg.doc col.c1{width:28px}.kimg.doc col.c2{width:190px}.kimg.doc col.c4{width:60px}
+.kimg.doc th{font-size:13px;padding:4px 2px;height:42px}.kimg.doc th.l{padding-left:6px}
+.kimg.doc td{height:48px;padding:0 3px}
+.kimg.doc tr.gh td{font-size:15px;height:30px;padding-left:8px}
+.kimg.doc td.c{font-size:12px}.kimg.doc td.nv{padding-left:6px}
+.kimg.doc td.nv b{font-size:15.5px;overflow:hidden;text-overflow:ellipsis}.kimg.doc td.nv span{display:block;font-size:12px;overflow:hidden;text-overflow:ellipsis}
+.kimg.doc td.k b{font-size:17px}.kimg.doc td.k s{font-size:12px}.kimg.doc td.k em{font-size:14px}.kimg.doc td.bq em{font-size:17px}
+.kimg.doc td.na{font-size:16px}.kimg.doc td.nd em{font-size:11.5px}
+.kimg.doc i.dc{top:1px;right:2px;font-size:10.5px;border-radius:5px;padding:0 4px;line-height:14px}
+.kimg.doc .nvb,.kimg.doc .dcn{font-size:12.5px;padding:0 2px;line-height:1.35}
+.kimg.doc .ft{flex-direction:column;gap:4px;font-size:12.5px;margin-top:8px;padding:0 2px;line-height:1.35}
+.kimg.doc .lg span{margin-left:0;margin-right:14px}
+`;
+  function fragmentDoc(R) {
+    const p2 = n => String(n).padStart(2, '0');
+    const sub = `Số liệu 01/${p2(R.thang)} – ${p2(R.ngay)}/${p2(R.thang)}/${R.nam} · Tiến độ thời gian ${Math.round(R.tienDo * 100)}% (${R.ngay}/${R.soNgay} ngày)`;
+    const cards = R.totals.map(t => `<div class="cd ${cls(t.p, R.tienDo)}"><div class="t">${esc(t.name)}</div><div class="v"><b>${fmtN(t.th)}</b><s>/${fmtN(t.kh)}</s>` +
+      (t.th == null ? '<em class="cc">chưa có</em>' : `<em>${pctS(t.p)}</em>`) + '</div></div>').join('');
+    const nb = R.nvbhNote;
+    const nvbh = nb ? '<div class="nvb"><b>Điểm KPI HT NVBH</b> = Σ min(%HT,120%) × tỷ trọng: C2C 10 · qua NV 20 · KPP 15 · THGT 15 · Doanh thu 20 · Wifi+Fiber gộp 10 · CT Vùng giao 10 (tính đạt)' +
+      (nb.c2cTuDong ? ' · Điểm bán C2C: mỗi điểm có GD C2C trong tháng = 1' : '') + (nb.chuaNhap && nb.chuaNhap.length ? ` · ${esc(nb.chuaNhap.join(', '))}: chưa có số thực hiện, chưa tính` : '') + '</div>' : '';
+    const notes = R.notes.length ? `<div class="dcn"><i class="dc">±</i><b>Điều chỉnh:</b> ${R.notes.map(esc).join('; ')}</div>` : '';
+    return `<div class="kimg doc"><div class="ti"><h1>KPI NHÂN VIÊN VÙNG 4 – T${p2(R.thang)}/${R.nam}</h1><p>${sub}</p></div>
+<div class="cds" style="grid-template-columns:repeat(${R.totals.length},1fr)">${cards}</div>
+${tableHtml(R.groups, 1, R).html}
+<div class="ft"><div class="lg"><span><i style="background:#2fb565"></i>Đạt KH</span><span><i style="background:#f2c230"></i>≥ tiến độ</span><span><i style="background:#e8574c"></i>Dưới tiến độ</span></div>
+<div>Ô: <b>thực hiện</b>/kế hoạch và % · Gói cước ≥ 100.000đ/tháng · Điểm KPI HT = Σ %HT × tỷ trọng các chỉ tiêu có KH (100 = đạt) · KPP = mã &lt;NV&gt;_C2C · Cập nhật ${esc(R.taoLuc)}</div></div>${nvbh}${notes}</div>`;
+  }
+
   function standalone(R) {
     return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>KPI NV Vùng 4 T${String(R.thang).padStart(2, '0')}-${R.nam}</title><style>body{margin:0;background:#eef2f7}${CSS}</style></head><body>${fragment(R)}</body></html>`;
   }
 
-  root.KpiImage = { CSS, fragment, standalone };
+  root.KpiImage = { CSS, CSS_DOC, fragment, fragmentDoc, standalone };
 })(typeof window !== 'undefined' ? window : globalThis);

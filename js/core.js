@@ -424,7 +424,7 @@
         MBF: Z(), SME: Z(), FIBER: Z(), xMBF: Z(), xSME: Z(), xFIBER: Z() };
       nv.push(o); byCode.set(k, o);
     }
-    const months = new Set(), detail = [];
+    const months = new Set(), detail = [], WIFI = Z(), FWD = Z();   // MobiWifi 5G = FWD có Mã gói; FWD = mọi TB FWD (chỉ hiển thị)
     for (const r of allNa(store.na)) {
       const d = r[1];
       if (yOf(d) !== nam) continue;
@@ -435,6 +435,7 @@
       const kind = isSaymee(r[3]) ? 'SME' : 'MBF';
       const ok = inWin(e, d), o = byCode.get(r[5]);
       (ok ? o[kind] : o['x' + kind])[m - 1]++;
+      if (ok && kind === 'MBF' && LOAI_WIFI.includes(r[3])) { FWD[m - 1]++; if (r[4]) WIFI[m - 1]++; }
       detail.push([kind === 'SME' ? 'Saymee' : 'MobiFone', m, fmtD(d), r[0], r[3], r[2], r[4], e.n.ma, e.n.ten, o.loai, ok ? 'Có' : 'Ngoài thời gian công tác']);
     }
     for (const r of allFiber(store.fiber)) {
@@ -463,7 +464,8 @@
     const D = { nam, thang, months: ms, taoLuc: nowText(), nv, kpi, nguon: sourceNames(store) };
     detail.sort((a, b) => (a[1] - b[1]) || a[0].localeCompare(b[0]) || a[2].split('/').reverse().join('').localeCompare(b[2].split('/').reverse().join('')));
     const tot = k => nv.reduce((s, o) => s + o[k][thang - 1], 0);
-    const summary = { MBF: tot('MBF'), SME: tot('SME'), FIBER: tot('FIBER'), kMBF: kpi.MBF[thang - 1], kSME: kpi.SME[thang - 1], kFIBER: kpi.FIBER[thang - 1] };
+    const summary = { MBF: tot('MBF'), SME: tot('SME'), FIBER: tot('FIBER'), kMBF: kpi.MBF[thang - 1], kSME: kpi.SME[thang - 1], kFIBER: kpi.FIBER[thang - 1],
+      WIFI: WIFI[thang - 1], FWD: FWD[thang - 1], kWIFI: kv && kv.kpi.WIFI ? kv.kpi.WIFI[thang - 1] : null };
     return { D, detail, warn, summary };
   }
   const DETAIL_HEAD = ['Chỉ tiêu', 'Tháng', 'Ngày', 'Số TB / User Fiber', 'Loại TB / Dịch vụ', 'Lý do HM / Tình trạng HĐ', 'Mã gói', 'Mã NV', 'Tên NV', 'Nhóm', 'Được tính'];

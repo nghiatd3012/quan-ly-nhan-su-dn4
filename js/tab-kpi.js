@@ -36,17 +36,33 @@
     vung.appendChild(el('p', { class: 'loi-the', text: kq.thongBao || macDinh }));
   }
 
+  // Bố cục giống web báo cáo cũ: các tab con Báo cáo tổng | KPI nhân viên (ảnh ngang/dọc) | KPI của tôi.
   function ve(vung) {
-    if (nho.cuaAi !== App.nguoiDung.ma) nho = { cuaAi: App.nguoiDung.ma, thang: null, cv: '', nlv: '', xemMa: null };
-    var bang = el('div', { class: 'card', id: 'kpi-bang' }, [el('h3', { text: 'KPI tất cả nhân viên' })]);
+    if (nho.cuaAi !== App.nguoiDung.ma) nho = { cuaAi: App.nguoiDung.ma, thang: null, cv: '', nlv: '', xemMa: null, tab: null };
+    var bang = el('div', { class: 'card', id: 'kpi-bang' }, [el('h3', { text: 'KPI nhân viên' })]);
     var toi = el('div', { class: 'card', id: 'kpi-toi' }, [el('h3', { text: 'KPI của tôi' })]);
-    if (laQL()) {
-      var tong = el('div', { class: 'card', id: 'kpi-tong' }, [el('h3', { text: 'Báo cáo tổng Vùng 4' })]);
-      vung.appendChild(tong); vung.appendChild(bang); vung.appendChild(toi);
-      taiTong(tong, null);
-    } else {
-      vung.appendChild(toi); vung.appendChild(bang);
+    var tong = laQL() ? el('div', { class: 'card', id: 'kpi-tong' }, [el('h3', { text: 'Báo cáo tổng Vùng 4' })]) : null;
+    var ds = laQL() ? [['tong', 'Báo cáo tổng', tong], ['nv', 'KPI nhân viên', bang], ['toi', 'KPI của tôi', toi]]
+      : [['toi', 'KPI của tôi', toi], ['nv', 'KPI nhân viên', bang]];
+    if (!ds.some(function (x) { return x[0] === nho.tab; })) nho.tab = ds[0][0];
+    var thanh = el('nav', { class: 'tab-con', role: 'tablist', 'aria-label': 'Báo cáo KPI' });
+    function mo(id) {
+      nho.tab = id;
+      ds.forEach(function (x) {
+        x[2].hidden = x[0] !== id;
+        var b = thanh.querySelector('[data-con="' + x[0] + '"]');
+        b.classList.toggle('on', x[0] === id); b.setAttribute('aria-selected', x[0] === id ? 'true' : 'false');
+      });
+      if (id === 'nv' && bang.veAnh) bang.veAnh();
     }
+    ds.forEach(function (x) {
+      thanh.appendChild(el('button', { type: 'button', role: 'tab', class: 'tab', id: 'kpi-con-' + x[0], dataset: { con: x[0] }, text: x[1], onclick: function () { mo(x[0]); } }));
+    });
+    vung.appendChild(thanh);
+    ds.forEach(function (x) { vung.appendChild(x[2]); });
+    bang.laDangMo = function () { return nho.tab === 'nv'; };
+    mo(nho.tab);
+    if (tong) taiTong(tong, null);
     taiBang(bang, toi);
     taiCaNhan(toi);
   }
@@ -68,10 +84,51 @@
   }
 
   function veBang(the, R, dsThang, toi) {
-    var ql = laQL();
-    the.appendChild(el('h3', { text: 'KPI tất cả nhân viên – T' + p2(R.thang) + '/' + R.nam }));
+    var ql = laQL(), the0 = the;
+    the.appendChild(el('h3', { text: 'KPI nhân viên – T' + p2(R.thang) + '/' + R.nam }));
+    var dauBang = el('div', { class: 'loc' });
+    the.appendChild(dauBang);
     the.appendChild(el('p', { class: 'hint', text: 'Số liệu đến ' + p2(R.ngay) + '/' + p2(R.thang) + '/' + R.nam +
       ' · tiến độ thời gian ' + Math.round(R.tienDo * 100) + '%' }));
+    // Ảnh KPI hiện thẳng trên trang như web báo cáo cũ: khổ ngang (gửi group) hoặc dọc (xem điện thoại)
+    var anh = el('div', { class: 'anh-kpi', id: 'kpi-anh' });
+    var seg = el('div', { class: 'seg', role: 'group', 'aria-label': 'Khổ ảnh' });
+    var nutTai = el('button', { type: 'button', id: 'kpi-tai-anh-nv', class: 'btn g', text: '⬇ Tải ảnh PNG', disabled: true });
+    var blobAnh = null, daVe = null;
+    [['ngang', 'Ảnh ngang'], ['doc', 'Ảnh dọc']].forEach(function (x) {
+      seg.appendChild(el('button', { type: 'button', dataset: { ly: x[0] }, 'aria-pressed': khoAnh() === x[0] ? 'true' : 'false', text: x[1],
+        onclick: function () {
+          try { localStorage.setItem('qlns-kpi-kho', x[0]); } catch (e) { }
+          Array.prototype.forEach.call(seg.children, function (b) { b.setAttribute('aria-pressed', b.dataset.ly === x[0] ? 'true' : 'false'); });
+          the0.veAnh();
+        } }));
+    });
+    nutTai.addEventListener('click', function () {
+      if (blobAnh) luuFile('KPI_NV_Vung4_T' + p2(R.thang) + '-' + R.nam + (khoAnh() === 'doc' ? '_doc' : '') + '.png', blobAnh);
+    });
+    the.appendChild(el('div', { class: 'nhom-nut' }, [seg, nutTai]));
+    the.appendChild(anh);
+    the.veAnh = function () {
+      if (!the0.laDangMo || !the0.laDangMo()) return;
+      var kho = khoAnh();
+      if (daVe === kho) return;
+      daVe = kho; blobAnh = null; nutTai.disabled = true;
+      UI.xoa(anh).appendChild(el('p', { class: 'hint', text: 'Đang dựng ảnh…' }));
+      veAnhKpi(R, kho).then(function (blob) {
+        if (daVe !== kho || !the0.isConnected) return;
+        blobAnh = blob; nutTai.disabled = false;
+        UI.xoa(anh);
+        anh.classList.toggle('doc', kho === 'doc');
+        anh.appendChild(el('img', { src: URL.createObjectURL(blob), alt: 'Ảnh KPI nhân viên Vùng 4 tháng ' + R.thang + '/' + R.nam }));
+        anh.appendChild(el('p', { class: 'hint', text: 'Trên điện thoại: nhấn giữ ảnh để lưu hoặc chia sẻ vào group.' }));
+      }).catch(function (e) {
+        daVe = null;
+        UI.xoa(anh).appendChild(el('p', { class: 'loi-the', text: 'Không tạo được ảnh: ' + (e && e.message || e) + '. Xem bảng chi tiết bên dưới.' }));
+      });
+    };
+    var chiTiet = el('details', { id: 'kpi-chi-tiet' }, [el('summary', { text: 'Xem bảng chi tiết' + (ql ? ', lọc theo chức vụ / nơi làm việc' : '') })]);
+    the.appendChild(chiTiet);
+    the = chiTiet;   // phần bảng bên dưới nằm trong khung "Xem bảng chi tiết"
 
     var nhom = R.groups || [];
     var tatCa = [];
@@ -90,7 +147,8 @@
     if (ql) {
       var chonThang = el('select', { id: 'kpi-thang', 'aria-label': 'Tháng' }, dsThang.map(function (t) { return el('option', { value: t, text: nhanThang(t) }); }));
       chonThang.value = nho.thang;
-      chonThang.addEventListener('change', function () { nho.thang = chonThang.value; taiBang(the, null); });
+      chonThang.addEventListener('change', function () { nho.thang = chonThang.value; taiBang(the0, null); });
+      dauBang.appendChild(chonThang);
       var cvs = [], nlvs = [];
       tatCa.forEach(function (r) { if (cvs.indexOf(r.g) < 0) cvs.push(r.g); if (r.donvi && nlvs.indexOf(r.donvi) < 0) nlvs.push(r.donvi); });
       nlvs.sort(function (a, b) { return a.localeCompare(b, 'vi'); });
@@ -105,7 +163,7 @@
       chonCv.value = nho.cv; chonNlv.value = nho.nlv;
       chonCv.addEventListener('change', function () { nho.cv = chonCv.value; veLai(); });
       chonNlv.addEventListener('change', function () { nho.nlv = chonNlv.value; veLai(); });
-      the.appendChild(el('div', { class: 'loc' }, [chonThang, chonCv, chonNlv]));
+      the.appendChild(el('div', { class: 'loc' }, [chonCv, chonNlv]));
     }
     veLai();
     the.appendChild(cuon);
@@ -113,15 +171,17 @@
     if (R.notes && R.notes.length) {
       the.appendChild(el('ul', { class: 'ghi-chu' }, R.notes.map(function (n) { return el('li', { text: 'Điều chỉnh: ' + n }); })));
     }
-    if (ql) {
-      var nut = el('button', { type: 'button', id: 'kpi-tai-anh-nv', class: 'btn g', text: '⬇ Tải ảnh KPI NV' });
-      nut.addEventListener('click', function () { taiAnhKpi(nut, R); });
-      the.appendChild(el('div', { class: 'nhom-nut' }, [nut]));
-      if (R.warn && R.warn.length) {
-        the.appendChild(el('div', { id: 'kpi-canh-bao', class: 'canh-bao' }, [el('b', { text: '⚠️ Cảnh báo' }),
-          el('ul', null, R.warn.map(function (w) { return el('li', { text: w }); }))]));
-      }
+    if (ql && R.warn && R.warn.length) {
+      the0.appendChild(el('div', { id: 'kpi-canh-bao', class: 'canh-bao' }, [el('b', { text: '⚠️ Cảnh báo' }),
+        el('ul', null, R.warn.map(function (w) { return el('li', { text: w }); }))]));
     }
+    if (!dauBang.children.length) dauBang.remove();
+    the0.veAnh();
+  }
+  function khoAnh() {
+    var s = null;
+    try { s = localStorage.getItem('qlns-kpi-kho'); } catch (e) { }
+    return s === 'doc' || s === 'ngang' ? s : (window.innerWidth < 700 ? 'doc' : 'ngang');
   }
 
   function oPhanTram(c, tienDo) {
@@ -261,12 +321,11 @@
       }
       if (kq.summary) the.appendChild(oTomTat(kq.summary, kq.thang));
       var khung = el('iframe', { id: 'kpi-dash', class: 'dash', title: 'Báo cáo tổng Vùng 4' });
-      // trên điện thoại báo cáo chi tiết rất dài: thu gọn, chạm mới mở
-      var moRong = window.matchMedia && window.matchMedia('(min-width: 900px)').matches;
-      the.appendChild(el('details', { id: 'kpi-tong-chi-tiet', open: moRong }, [el('summary', { text: 'Xem Báo cáo tổng chi tiết' }), khung]));
+      // giống web báo cáo cũ: dashboard hiện thẳng dưới các ô tóm tắt
       var nut = el('button', { type: 'button', id: 'kpi-tai-anh-tong', class: 'btn g', text: '⬇ Tải ảnh Báo cáo tổng' });
       nut.addEventListener('click', function () { taiAnhTong(nut, kq.D); });
       the.appendChild(el('div', { class: 'nhom-nut' }, [nut]));
+      the.appendChild(el('div', { id: 'kpi-tong-chi-tiet' }, [khung]));
       layMauDash().then(function (mau) { khung.srcdoc = dashHtml(mau, kq.D, true); })
         .catch(function () { khung.replaceWith(el('p', { class: 'loi-the', text: 'Không tải được mẫu Báo cáo tổng (dashboard.html).' })); });
     });
@@ -281,8 +340,13 @@
         el('div', { class: 'bar' }, [el('i', { style: 'width:' + Math.min(100, p || 0) + '%' })])]);
     }
     var khPtm = s.kMBF == null && s.kSME == null ? null : (s.kMBF || 0) + (s.kSME || 0);
-    return el('div', { class: 'kpis', id: 'kpi-tong-so', 'aria-label': 'Tóm tắt ' + nhanThang(thang) }, [
-      o('TB PTM (MBF + Saymee)', s.MBF + s.SME, khPtm), o('MobiFone', s.MBF, s.kMBF), o('Saymee', s.SME, s.kSME), o('Fiber', s.FIBER, s.kFIBER)]);
+    var ds = [o('TB PTM (MBF + Saymee)', s.MBF + s.SME, khPtm), o('MobiFone', s.MBF, s.kMBF), o('Saymee (THGT)', s.SME, s.kSME), o('Fiber', s.FIBER, s.kFIBER)];
+    if (s.WIFI != null) {   // bản Báo cáo tổng công bố từ 26/11/2026 trở đi mới có MobiWifi 5G
+      var w = o('MobiWifi 5G (trong MobiFone)', s.WIFI, s.kWIFI);
+      if (s.FWD != null) w.querySelector('div').insertBefore(el('small', { title: 'Mọi TB FWD, kể cả chưa có gói', text: ' (' + s.FWD + ' FWD)' }), w.querySelector('div small'));
+      ds.push(w);
+    }
+    return el('div', { class: 'kpis', id: 'kpi-tong-so', 'aria-label': 'Tóm tắt ' + nhanThang(thang) }, ds);
   }
 
   // ===== Tải ảnh =====
@@ -297,25 +361,23 @@
   }
   function baoLoi(nut, e) { dangVe(nut, false); window.alert('Không tạo được ảnh: ' + (e && e.message || e)); }
 
-  function taiAnhKpi(nut, R) {
-    dangVe(nut, true, 'Đang vẽ ảnh…');
+  // Dựng ảnh KPI NV (kho = 'ngang' 1760px | 'doc' 760px) trong vùng ẩn rồi chụp bằng html2canvas → Promise<Blob PNG>
+  function veAnhKpi(R, kho) {
+    var doc = kho === 'doc';
     var san = el('div', { style: 'position:fixed;left:-20000px;top:0' });
-    napHtml2canvas().then(function () {
+    return napHtml2canvas().then(function () {
       var st = document.createElement('style');
-      st.textContent = KpiImage.CSS;
+      st.textContent = doc ? KpiImage.CSS_DOC : KpiImage.CSS;
       san.appendChild(st);
       var vo = document.createElement('div');
-      vo.innerHTML = KpiImage.fragment(R); // chuỗi đã escape trong kpi_image.js
+      vo.innerHTML = doc ? KpiImage.fragmentDoc(R) : KpiImage.fragment(R); // chuỗi đã escape trong kpi_image.js
       san.appendChild(vo);
       document.body.appendChild(san);
       return document.fonts && document.fonts.ready;
     }).then(function () {
       var e = san.querySelector('.kimg');
-      return window.html2canvas(e, { scale: 1, backgroundColor: '#eef2f7', logging: false, width: e.offsetWidth, height: e.offsetHeight, windowWidth: 1800 });
-    }).then(thanhBlob).then(function (blob) {
-      san.remove(); dangVe(nut, false);
-      luuFile('KPI_NV_Vung4_T' + p2(R.thang) + '-' + R.nam + '.png', blob);
-    }).catch(function (e) { san.remove(); baoLoi(nut, e); });
+      return window.html2canvas(e, { scale: doc ? 2 : 1, backgroundColor: '#eef2f7', logging: false, width: e.offsetWidth, height: e.offsetHeight, windowWidth: doc ? 800 : 1800 });
+    }).then(thanhBlob).then(function (blob) { san.remove(); return blob; }, function (e) { san.remove(); throw e; });
   }
 
   // html2canvas 1.4.1 không đọc được màu dạng color(...)/oklch (vd. color-mix của ô nhiệt):

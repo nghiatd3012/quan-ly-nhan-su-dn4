@@ -120,3 +120,17 @@ table.du-lieu td.wrap{word-break:break-all;max-width:180px}
 .ket-qua.kq-ok{background:#e8f5e9;color:#1b5e20}
 .ket-qua.kq-loi{background:#fdeaea;color:#b71c1c}
 label.btn{cursor:pointer;margin:0}
+/* Thẻ KPI bố cục giống web báo cáo cũ (26/11/2026): tab con, ảnh KPI ngang/dọc, 5 ô tóm tắt */
+.tab-con{display:flex;gap:4px;border-bottom:1px solid #dbe1ea;margin:0 0 10px;overflow-x:auto}
+.tab-con .tab{background:none;border-radius:0;border-bottom:2.5px solid transparent;color:#4b5869;font-weight:600;padding:9px 12px;font-size:14px}
+.tab-con .tab.on{background:none;color:#0b4ea2;border-bottom-color:#0b4ea2}
+.seg{display:inline-flex;border:1px solid #dbe1ea;border-radius:9px;overflow:hidden;background:#fff}
+.seg button{border:0;background:transparent;color:#4b5869;font-weight:600;font-size:13px;padding:8px 12px}
+.seg button+button{border-left:1px solid #dbe1ea}
+.seg button[aria-pressed=true]{background:#e3eefc;color:#0b4ea2}
+.anh-kpi{margin-top:10px}
+.anh-kpi img{display:block;width:100%;height:auto;border:1px solid #dbe1ea;border-radius:10px;background:#eef2f7}
+.anh-kpi.doc img{max-width:460px;margin:0 auto}
+#kpi-chi-tiet{margin-top:12px}
+#kpi-chi-tiet>summary{cursor:pointer;font-weight:600;color:#0b4ea2;padding:6px 0}
+@media (min-width:700px){.kpis{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}}
