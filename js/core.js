@@ -73,6 +73,17 @@
 
   // ===== Đọc workbook =====
   function readWorkbook(buf) {
+    // File văn bản (CSV đã chốt PTM_*_T01-T10.csv): đọc nguyên chuỗi. Nếu để SheetJS tự đoán, "12/10/2026" bị hiểu
+    // theo kiểu Mỹ thành 10/12 và số thuê bao mất số 0 đầu (sửa 26/11/2026).
+    const u = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+    const nhiPhan = (u[0] === 0x50 && u[1] === 0x4B) || (u[0] === 0xD0 && u[1] === 0xCF);   // xlsx (zip) / xls (OLE)
+    if (!nhiPhan) {
+      const txt = new TextDecoder('utf-8').decode(u).replace(/^﻿/, '');
+      if (!/^\s*</.test(txt)) {   // không phải bảng HTML (một số file .xls tải về là HTML: để SheetJS tự đọc)
+        const dong1 = txt.slice(0, txt.indexOf('\n') >>> 0);
+        return XLSX.read(txt, { type: 'string', raw: true, dense: true, FS: dong1.includes(';') ? ';' : ',' });
+      }
+    }
     return XLSX.read(buf, { type: 'array', cellDates: true, cellText: false, cellStyles: false, dense: true });
   }
   function sheetRows(ws) {
@@ -619,11 +630,12 @@
           p: kh && v != null ? v / kh * 100 : null };
       });
       return { ma: n.ma, ten: n.ten || (e ? e.n.ten : ''), donvi: shortUnit(n.donvi || (e ? e.n.donvi : '')), g, nvbh, cells,
-        bq: sw > 0 ? sp / sw * 100 : null };
+        bq: sw > 0 && !kn.chiTH ? sp / sw * 100 : null };
     });
     // Chỉ hiện cột nhập tay khi có NV được giao KH
     const tkh = k => rows.reduce((s, r) => s + (r.cells.find(x => x.k === k).kh || 0), 0);
-    const colsHien = cols.filter(c => !c.nhap || tkh(c.k) > 0);
+    // Tháng cũ chưa có file KPI NV (kn.chiTH, do công cụ đồng bộ tạo): chỉ hiện số thực hiện; C2C hiện khi có file giao dịch
+    const colsHien = kn.chiTH ? cols.filter(c => !c.nhap || (c.k === 'C2C' && c2cTuDong)) : cols.filter(c => !c.nhap || tkh(c.k) > 0);
     const hien = new Set(colsHien.map(c => c.k));
     rows.forEach(r => { r.cells = r.cells.filter(c => hien.has(c.k)); });
     const groups = [];
@@ -637,7 +649,7 @@
       const kh = cs.reduce((s, x) => s + (x.kh || 0), 0);
       const coTh = cs.some(x => x.kh > 0 && x.th != null);
       const v = cs.reduce((s, x) => s + (x.th || 0), 0);
-      return { k: c.k, name: c.name, kh, th: c.nhap && !coTh ? null : v, p: kh > 0 && (!c.nhap || coTh) ? v / kh * 100 : null };
+      return { k: c.k, name: c.name, kh, th: c.nhap && !coTh && !kn.chiTH ? null : v, p: kh > 0 && (!c.nhap || coTh) ? v / kh * 100 : null };
     });
     const notes = adjText(adjNotes, code => name(code) || code);
     const nvbhNote = rows.some(r => r.nvbh) ? {
@@ -645,7 +657,8 @@
     } : null;
     detail.sort((a, b) => (a[0].startsWith('DC') ? -1 : 0) - (b[0].startsWith('DC') ? -1 : 0) || a[0].localeCompare(b[0]) || a[1].split('/').reverse().join('').localeCompare(b[1].split('/').reverse().join('')));
     return { nam, thang, ngay, soNgay, tienDo, cols: colsHien.map(c => ({ k: c.k, name: c.name, th: c.th, nhap: !!c.nhap })),
-      groups, totals, notes, nvbhNote, warn, detail, taoLuc: nowText(), kpiFile: kn.name };
+      groups, totals, notes, nvbhNote: kn.chiTH ? null : nvbhNote, warn, detail, taoLuc: nowText(), kpiFile: kn.name,
+      chiTH: !!kn.chiTH, khTheo: kn.khTheo || null };
   }
   const KPI_DETAIL_HEAD = ['Chi tieu', 'Ngay', 'So TB / User Fiber', 'Loai TB / Dich vu', 'Ma goi / Tinh trang HD', 'Gia thang / Chan cat', 'Ma PT', 'Ma NV', 'Ten NV'];
 

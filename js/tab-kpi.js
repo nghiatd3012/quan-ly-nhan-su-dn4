@@ -26,6 +26,58 @@
 
   App.dangKyThe({ id: 'kpi', ten: 'KPI', quyenToiThieu: 'NV', ve: ve });
 
+  // ===== Số liệu công bố sẵn trên GitHub Pages (du-lieu/*.json, người dùng đồng ý công khai 26/11/2026) =====
+  // Tải file tĩnh ~0,2 giây thay vì gọi Apps Script ~3,5 giây; lỗi / chưa có file thì quay về Apps Script như cũ.
+  var DL = 'du-lieu/', mlHua = null, tep = {};
+  function mucLuc() {
+    if (!mlHua) mlHua = fetch(DL + 'muc-luc.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .catch(function (e) { mlHua = null; throw e; });
+    return mlHua;
+  }
+  function docTep(ten, v) {
+    var k = ten + '?v=' + encodeURIComponent(v || '');
+    if (!tep[k]) tep[k] = fetch(DL + k).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .catch(function (e) { delete tep[k]; throw e; });
+    return tep[k];
+  }
+  function tinhTinh(action, p, ml) {
+    var ql = laQL(), cb = ml.thangCongBo || '';
+    var dsK = (ml.kpi || []).slice().sort(), dsXem = ql ? dsK : dsK.filter(function (t) { return cb && t <= cb; });
+    if (action === 'tong.get') {
+      var dsT = (ml.tong || []).slice().sort();
+      if (!dsT.length) return Promise.resolve({ ok: true, D: null, warn: [], summary: null, dsThang: [] });
+      var tt = dsT.indexOf(p.thang) >= 0 ? p.thang : dsT[dsT.length - 1];
+      return docTep('tong-' + tt + '.json', ml.capNhat).then(function (t) {
+        return { ok: true, thang: tt, D: t.D, warn: t.warn || [], summary: t.summary || null, dsThang: dsT };
+      });
+    }
+    if (action === 'kpi.thang') {
+      if (!dsXem.length) return Promise.resolve({ ok: true, R: null, dsThang: [] });
+      var th = ql ? (dsXem.indexOf(p.thang) >= 0 ? p.thang : dsXem[dsXem.length - 1]) : (dsXem.indexOf(cb) >= 0 ? cb : dsXem[dsXem.length - 1]);
+      return docTep('kpi-' + th + '.json', ml.capNhat).then(function (R) {
+        if (!ql) { R = Object.assign({}, R); delete R.warn; }
+        return { ok: true, thang: th, R: R, dsThang: ql ? dsXem : [th] };
+      });
+    }
+    // kpi.lichSu: 12 tháng gần nhất có dòng của mã đang xem
+    var ma = String(p.ma || App.nguoiDung.ma).toUpperCase(), ds = dsXem.slice(-12);
+    return Promise.all(ds.map(function (t) { return docTep('kpi-' + t + '.json', ml.capNhat); })).then(function (dsR) {
+      var ls = [];
+      dsR.forEach(function (R, i) {
+        var row = null;
+        (R.groups || []).forEach(function (g) { (g.rows || []).forEach(function (r) { if (String(r.ma).toUpperCase() === ma) row = r; }); });
+        if (row) ls.push({ thang: ds[i], nam: R.nam, row: row, tienDo: R.tienDo, chiTH: !!R.chiTH });
+      });
+      return { ok: true, ma: ma, lichSu: ls };
+    });
+  }
+  function layDuLieu(action, p, cb) {
+    UI.dangTai(true);
+    mucLuc().then(function (ml) { return tinhTinh(action, p, ml); }).then(function (kq) { UI.dangTai(false); cb(kq); },
+      function () { UI.dangTai(false); Api.goiNho(action, p, cb); });
+  }
+
   function p2(n) { return (n < 10 ? '0' : '') + n; }
   function pt(p) { return p == null || isNaN(p) ? '–' : Math.round(p) + '%'; }
   function mau(p, tienDo) { return p == null ? '' : UI.mauPhanTram(p / 100, tienDo); }
@@ -39,6 +91,7 @@
   // Bố cục giống web báo cáo cũ: các tab con Báo cáo tổng | KPI nhân viên (ảnh ngang/dọc) | KPI của tôi.
   function ve(vung) {
     if (nho.cuaAi !== App.nguoiDung.ma) nho = { cuaAi: App.nguoiDung.ma, thang: null, cv: '', nlv: '', xemMa: null, tab: null };
+    mlHua = null;   // mỗi lần mở thẻ KPI đọc lại mục lục (biết có số liệu mới chưa)
     var bang = el('div', { class: 'card', id: 'kpi-bang' }, [el('h3', { text: 'KPI nhân viên' })]);
     var toi = el('div', { class: 'card', id: 'kpi-toi' }, [el('h3', { text: 'KPI của tôi' })]);
     var tong = laQL() ? el('div', { class: 'card', id: 'kpi-tong' }, [el('h3', { text: 'Báo cáo tổng Vùng 4' })]) : null;
@@ -69,7 +122,7 @@
 
   // ===== KPI tất cả nhân viên =====
   function taiBang(the, toi) {
-    Api.goiNho('kpi.thang', nho.thang ? { thang: nho.thang } : {}, function (kq) {
+    layDuLieu('kpi.thang', nho.thang ? { thang: nho.thang } : {}, function (kq) {
       if (!App.conHieuLuc()) return;
       UI.xoa(the);
       if (!kq.ok) { the.appendChild(el('h3', { text: 'KPI tất cả nhân viên' })); loiThe(the, kq, 'Không tải được KPI'); return; }
@@ -89,7 +142,8 @@
     var dauBang = el('div', { class: 'loc' });
     the.appendChild(dauBang);
     the.appendChild(el('p', { class: 'hint', text: 'Số liệu đến ' + p2(R.ngay) + '/' + p2(R.thang) + '/' + R.nam +
-      ' · tiến độ thời gian ' + Math.round(R.tienDo * 100) + '%' }));
+      ' · tiến độ thời gian ' + Math.round(R.tienDo * 100) + '%' +
+      (R.chiTH ? ' · tháng chưa có file KPI NV: chỉ hiện số thực hiện' : R.khTheo ? ' · kế hoạch lấy theo KPI NV T' + p2(R.khTheo) : '') }));
     // Ảnh KPI hiện thẳng trên trang như web báo cáo cũ: khổ ngang (gửi group) hoặc dọc (xem điện thoại)
     var anh = el('div', { class: 'anh-kpi', id: 'kpi-anh' });
     var seg = el('div', { class: 'seg', role: 'group', 'aria-label': 'Khổ ảnh' });
@@ -184,9 +238,10 @@
     return s === 'doc' || s === 'ngang' ? s : (window.innerWidth < 700 ? 'doc' : 'ngang');
   }
 
-  function oPhanTram(c, tienDo) {
+  function oPhanTram(c, tienDo, chiTH) {
     var td = el('td', { dataset: { k: c.k, th: String(c.th || 0), kh: String(c.kh || 0) } });
-    if (c.kh == null) { td.appendChild(el('span', { class: 'trong', text: '–' })); }
+    if (chiTH) { td.appendChild(el('div', { class: c.th ? '' : 'trong', text: so(c.th || 0) })); }   // tháng cũ: chỉ số thực hiện
+    else if (c.kh == null) { td.appendChild(el('span', { class: 'trong', text: '–' })); }
     else if (c.th == null) {
       td.title = 'Chưa có số thực hiện (chưa tính vào % BQ)';
       td.appendChild(el('div', { class: 'trong', text: 'chưa có' }));
@@ -212,7 +267,7 @@
         var tr = el('tr', { dataset: { ma: r.ma } }, [el('td', { class: 'ten' }, [el('b', { text: r.ten || r.ma }), el('small', { text: r.ma + (r.donvi ? ' · ' + r.donvi : '') })])]);
         COT.forEach(function (c) {
           var o = (r.cells || []).filter(function (x) { return x.k === c.k; })[0] || { k: c.k, kh: null, th: 0 };
-          tr.appendChild(oPhanTram(o, R.tienDo));
+          tr.appendChild(oPhanTram(o, R.tienDo, R.chiTH));
           tong[c.k].th += o.th || 0;
           if (o.th != null && o.kh) tong[c.k].coTh = true;
           if (o.kh != null) { tong[c.k].kh += o.kh; tong[c.k].coKh = true; }
@@ -225,7 +280,7 @@
     if (!hien.length) tb.appendChild(el('tr', null, [el('td', { colspan: String(COT.length + 2), class: 'trong', text: 'Không có nhân viên nào khớp bộ lọc.' })]));
     else if (nhanTong) {
       var tr = el('tr', { class: 'tot' }, [el('td', { class: 'ten', text: nhanTong })]);
-      COT.forEach(function (c) { var t = tong[c.k]; tr.appendChild(oPhanTram({ k: c.k, th: t.coTh || !t.kh ? t.th : null, kh: t.coKh ? t.kh : null }, R.tienDo)); });
+      COT.forEach(function (c) { var t = tong[c.k]; tr.appendChild(oPhanTram({ k: c.k, th: t.coTh || !t.kh ? t.th : null, kh: t.coKh ? t.kh : null }, R.tienDo, R.chiTH)); });
       var bqTb = bqs.length ? bqs.reduce(function (a, b) { return a + b; }, 0) / bqs.length : null;
       tr.appendChild(el('td', { class: mau(bqTb, R.tienDo) + ' bq', dataset: { k: 'BQ' }, title: 'Bình quân % BQ các nhân viên đang hiện', text: pt(bqTb) }));
       tb.appendChild(tr);
@@ -249,7 +304,7 @@
 
   function taiCaNhan(toi) {
     var ma = nho.xemMa;
-    Api.goiNho('kpi.lichSu', ma ? { ma: ma } : {}, function (kq) {
+    layDuLieu('kpi.lichSu', ma ? { ma: ma } : {}, function (kq) {
       if (!App.conHieuLuc() || ma !== nho.xemMa) return;
       var cu = toi.querySelector('.ca-nhan');
       if (cu) cu.remove();
@@ -270,7 +325,7 @@
         var tr = el('tr', null, [el('td', { text: c.ten })]);
         ls.forEach(function (x) {
           var o = (x.row.cells || []).filter(function (y) { return y.k === c.k; })[0] || { k: c.k, kh: null, th: 0 };
-          var td = oPhanTram(o, x.tienDo);
+          var td = oPhanTram(o, x.tienDo, x.chiTH);
           td.addEventListener('click', function () { td.classList.toggle('mo'); });
           tr.appendChild(td);
         });
@@ -302,7 +357,7 @@
   });
 
   function taiTong(the, thang) {
-    Api.goiNho('tong.get', thang ? { thang: thang } : {}, function (kq) {
+    layDuLieu('tong.get', thang ? { thang: thang } : {}, function (kq) {
       if (!App.conHieuLuc()) return;
       UI.xoa(the);
       the.appendChild(el('h3', { text: 'Báo cáo tổng Vùng 4' }));

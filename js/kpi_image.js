@@ -41,6 +41,12 @@
 .kimg .cd .v em.cc{font-size:15px;font-weight:600;color:#8a94a6;white-space:nowrap}
 .kimg .nvb{margin-top:6px;font-size:14px;color:#2d4a72;padding:0 4px}
 .kimg .ti.hep{min-width:400px;max-width:470px}
+.kimg .cd .v{white-space:nowrap}
+.kimg .hd.nhieu .cd{padding:8px 10px;min-width:0}
+.kimg .hd.nhieu .cd .t{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kimg .hd.nhieu .cd .v b{font-size:26px}.kimg .hd.nhieu .cd .v s{font-size:15px}.kimg .hd.nhieu .cd .v em{font-size:21px}
+.kimg .hd.nhieu .cd .v em.cc{font-size:13px}
+.kimg td.k.chi b{font-size:21px}
 .kimg i.dc{position:absolute;top:2px;right:3px;font-style:normal;font-size:12px;font-weight:700;color:#fff;background:#7a4cc2;border-radius:6px;padding:0 5px;line-height:16px}
 .kimg .dcn{margin-top:6px;font-size:14px;color:#4a3478;padding:0 4px}.kimg .dcn i.dc{position:static;margin-right:6px;display:inline-block}
 .kimg .ft{display:flex;justify-content:space-between;font-size:14px;color:#566479;margin-top:9px;padding:0 4px;gap:16px}
@@ -65,12 +71,13 @@
         body += `<tr><td class="c">${no++}</td><td class="nv"><b>${esc(r.ten)}</b><span>${esc(r.donvi)}</span></td>`;
         for (const c of r.cells) {
           const badge = c.adj ? `<i class="dc">${c.adj > 0 ? '+' : ''}${c.adj}</i>` : '';
+          if (R.chiTH) { body += `<td class="k chi${c.th ? '' : ' na'}">${badge}<div><b>${fmtN(c.th || 0)}</b></div></td>`; continue; }   // tháng cũ: chỉ thực hiện
           if (c.kh == null) { body += `<td class="k na">${badge}–</td>`; continue; }
           if (c.th == null) { body += `<td class="k nd">${badge}<div><b>–</b><s>/${fmtN(c.kh)}</s></div><em>chưa có</em></td>`; continue; }
           if (!c.kh) { body += `<td class="k na">${badge}<div><b>${fmtN(c.th)}</b><s>/0</s></div><em>–</em></td>`; continue; }
           body += `<td class="k ${cls(c.p, R.tienDo)}">${badge}<div><b>${fmtN(c.th)}</b><s>/${fmtN(c.kh)}</s></div><em>${pctS(c.p)}</em></td>`;
         }
-        body += r.bq == null ? `<td class="k bq na">–</td>` : `<td class="k bq ${cls(r.bq, R.tienDo)}"><em>${diem(r.bq)}</em></td>`;
+        body += R.chiTH || r.bq == null ? `<td class="k bq na">–</td>` : `<td class="k bq ${cls(r.bq, R.tienDo)}"><em>${diem(r.bq)}</em></td>`;
         body += '</tr>';
       }
     }
@@ -95,8 +102,9 @@
 
   function fragment(R) {
     const p2 = n => String(n).padStart(2, '0');
-    const sub = `Số liệu 01/${p2(R.thang)} – ${p2(R.ngay)}/${p2(R.thang)}/${R.nam} · Tiến độ thời gian ${Math.round(R.tienDo * 100)}% (${R.ngay}/${R.soNgay} ngày) · Gói cước ≥ 100.000đ/tháng`;
-    const cards = R.totals.map(t => `<div class="cd ${cls(t.p, R.tienDo)}"><div class="t">${esc(t.name)}</div><div class="v"><b>${fmtN(t.th)}</b><s>/${fmtN(t.kh)}</s>` +
+    const sub = `Số liệu 01/${p2(R.thang)} – ${p2(R.ngay)}/${p2(R.thang)}/${R.nam} · Tiến độ thời gian ${Math.round(R.tienDo * 100)}% (${R.ngay}/${R.soNgay} ngày) · Gói cước ≥ 100.000đ/tháng` + (R.chiTH ? ' · Chưa có file KPI NV tháng này: chỉ số thực hiện' : R.khTheo ? ` · KH theo KPI NV T${p2(R.khTheo)}` : '');
+    const cards = R.totals.map(t => R.chiTH ? `<div class="cd"><div class="t">${esc(t.name)}</div><div class="v"><b>${fmtN(t.th)}</b></div></div>` :
+      `<div class="cd ${cls(t.p, R.tienDo)}"><div class="t">${esc(t.name)}</div><div class="v"><b>${fmtN(t.th)}</b><s>/${fmtN(t.kh)}</s>` +
       (t.th == null ? '<em class="cc">chưa có</em>' : `<em>${pctS(t.p)}</em>`) + '</div></div>').join('');
     const nb = R.nvbhNote;
     const nvbh = nb ? '<div class="nvb"><b>Điểm KPI HT NVBH</b> = Σ min(%HT,120%) × tỷ trọng: C2C 10 · qua NV 20 · KPP 15 · THGT 15 · Doanh thu 20 · Wifi+Fiber gộp 10 · CT Vùng giao 10 (tính đạt)' +
@@ -104,7 +112,7 @@
     const [L, Rr] = split(R.groups);
     const a = tableHtml(L, 1, R), b = Rr.length ? tableHtml(Rr, a.next, R) : { html: '' };
     const notes = R.notes.length ? `<div class="dcn"><i class="dc">±</i><b>Điều chỉnh:</b> ${R.notes.map(esc).join('; ')}</div>` : '';
-    return `<div class="kimg"><div class="hd"><div class="ti${cotCua(R).length > 5 ? ' hep' : ''}"><h1>KPI NHÂN VIÊN VÙNG 4 – THÁNG ${p2(R.thang)}/${R.nam}</h1><p>${sub}</p></div>${cards}</div>
+    return `<div class="kimg"><div class="hd${cotCua(R).length > 5 ? ' nhieu' : ''}"><div class="ti${cotCua(R).length > 5 ? ' hep' : ''}"><h1>KPI NHÂN VIÊN VÙNG 4 – THÁNG ${p2(R.thang)}/${R.nam}</h1><p>${sub}</p></div>${cards}</div>
 <div class="bd">${a.html}${b.html}</div>
 <div class="ft"><div>Ô: <b>thực hiện</b>/kế hoạch và % · Điểm KPI HT = Σ %HT × tỷ trọng các chỉ tiêu có KH (100 = đạt) · KPP = mã &lt;NV&gt;_C2C · Cập nhật ${esc(R.taoLuc)}</div>
 <div class="lg"><span><i style="background:#2fb565"></i>Đạt KH</span><span><i style="background:#f2c230"></i>≥ tiến độ</span><span><i style="background:#e8574c"></i>Dưới tiến độ</span></div></div>${nvbh}${notes}</div>`;
@@ -136,8 +144,9 @@
 `;
   function fragmentDoc(R) {
     const p2 = n => String(n).padStart(2, '0');
-    const sub = `Số liệu 01/${p2(R.thang)} – ${p2(R.ngay)}/${p2(R.thang)}/${R.nam} · Tiến độ thời gian ${Math.round(R.tienDo * 100)}% (${R.ngay}/${R.soNgay} ngày)`;
-    const cards = R.totals.map(t => `<div class="cd ${cls(t.p, R.tienDo)}"><div class="t">${esc(t.name)}</div><div class="v"><b>${fmtN(t.th)}</b><s>/${fmtN(t.kh)}</s>` +
+    const sub = `Số liệu 01/${p2(R.thang)} – ${p2(R.ngay)}/${p2(R.thang)}/${R.nam} · Tiến độ thời gian ${Math.round(R.tienDo * 100)}% (${R.ngay}/${R.soNgay} ngày)` + (R.chiTH ? ' · Chưa có file KPI NV tháng này: chỉ số thực hiện' : R.khTheo ? ` · KH theo KPI NV T${p2(R.khTheo)}` : '');
+    const cards = R.totals.map(t => R.chiTH ? `<div class="cd"><div class="t">${esc(t.name)}</div><div class="v"><b>${fmtN(t.th)}</b></div></div>` :
+      `<div class="cd ${cls(t.p, R.tienDo)}"><div class="t">${esc(t.name)}</div><div class="v"><b>${fmtN(t.th)}</b><s>/${fmtN(t.kh)}</s>` +
       (t.th == null ? '<em class="cc">chưa có</em>' : `<em>${pctS(t.p)}</em>`) + '</div></div>').join('');
     const nb = R.nvbhNote;
     const nvbh = nb ? '<div class="nvb"><b>Điểm KPI HT NVBH</b> = Σ min(%HT,120%) × tỷ trọng: C2C 10 · qua NV 20 · KPP 15 · THGT 15 · Doanh thu 20 · Wifi+Fiber gộp 10 · CT Vùng giao 10 (tính đạt)' +
