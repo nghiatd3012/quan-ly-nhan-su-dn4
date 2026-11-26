@@ -15,7 +15,25 @@
   var BO_KHOANG_TRANG = { SDT: 1, CCCD: 1, SoTaiKhoan: 1 };
   var LUA_CHON = { GioiTinh: ['', 'Nam', 'Nữ'] };
 
-  App.dangKyThe({ id: 'hoso', ten: 'Thông tin cá nhân', quyenToiThieu: 'NV', ve: ve });
+  App.dangKyThe({ id: 'hoso', ten: 'Thông tin cá nhân', quyenToiThieu: 'NV', ve: ve, capNhatDem: napTruoc });
+
+  // Nạp ngầm hồ sơ của mình ngay khi vào trang (mỗi lệnh Apps Script mất ~2 giây) để bấm thẻ là hiện ngay (26/11/2026).
+  // Chỉ giữ trong bộ nhớ lúc mở trang (hồ sơ có CCCD/STK nên không lưu xuống máy); dùng 1 lần, quá 5 phút thì bỏ.
+  var truoc = null, dangTaiCuaToi = false;
+  function napTruoc() {
+    var u = App.nguoiDung;
+    if (dangTaiCuaToi || (truoc && truoc.ma === u.ma)) return;
+    truoc = { ma: u.ma, luc: Date.now(), hua: Api.goi('hoSo.get', {}, true) };
+  }
+  function layCuaToi() {
+    var t = truoc;
+    truoc = null;
+    if (t && t.ma === App.nguoiDung.ma && Date.now() - t.luc < 5 * 60 * 1000) {
+      UI.dangTai(true);
+      return t.hua.then(function (kq) { UI.dangTai(false); return kq.ok ? kq : Api.goi('hoSo.get', {}); });
+    }
+    return Api.goi('hoSo.get', {});
+  }
 
   function ve(vung) {
     var u = App.nguoiDung;
@@ -42,7 +60,9 @@
 
   function tai(than, thongBao) {
     var ma = dangXem;
-    Api.goi('hoSo.get', ma ? { ma: ma } : {}).then(function (kq) {
+    if (!ma) dangTaiCuaToi = true;
+    (ma ? Api.goi('hoSo.get', { ma: ma }) : layCuaToi()).then(function (kq) {
+      if (!ma) dangTaiCuaToi = false;
       if (!App.conHieuLuc() || ma !== dangXem) return;
       UI.xoa(than);
       if (!kq.ok) {
