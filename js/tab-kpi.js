@@ -74,7 +74,12 @@
   }
   function layDuLieu(action, p, cb) {
     UI.dangTai(true);
-    mucLuc().then(function (ml) { return tinhTinh(action, p, ml); }).then(function (kq) { UI.dangTai(false); cb(kq); },
+    var web = null;
+    try { web = localStorage.getItem('qlns-cong-bo-web'); } catch (e) { }
+    mucLuc().then(function (ml) {
+      if (web && !(ml.capNhat > web)) throw new Error('GitHub cũ hơn lần công bố trên web');
+      return tinhTinh(action, p, ml);
+    }).then(function (kq) { UI.dangTai(false); cb(kq); },
       function () { UI.dangTai(false); Api.goiNho(action, p, cb); });
   }
 

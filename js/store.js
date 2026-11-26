@@ -127,6 +127,31 @@
     return [...m.keys()].sort((a, b) => a - b).map(k => m.get(k));
   }
 
+  // KPI NV dùng cho 1 tháng (dùng chung cho nút "Cập nhật báo cáo" và tools/dong-bo-web.mjs).
+  // Tháng chưa có file KPI NV (người dùng chốt 26/11/2026): tháng ngay trước tháng có file đầu tiên trong năm
+  // (vd. T10 trước T11) dùng KH của tháng đó; các tháng cũ hơn chỉ hiện số thực hiện, không KH / %.
+  // Trả về danh sách kpinv của năm (đã thêm tháng tạm) hoặc null nếu tháng này không tính được KPI NV.
+  function kpiNvChoThang(store, nam, thang) {
+    const kn = store.kpinv.filter(k => k.nam === nam);
+    if (kn.some(k => k.thang === thang)) return kn;
+    const sau = kn.filter(k => k.thang > thang).sort((p, q) => p.thang - q.thang)[0];
+    if (!sau) return null;
+    const lay = sau.thang === thang + 1 && thang === Math.min(...kn.map(k => k.thang)) - 1;
+    const nv = sau.nv.map(n => lay ? Object.assign({}, n, { th: {} }) : { ma: n.ma, ten: n.ten, donvi: n.donvi, kh: {}, w: {}, th: {} });
+    if (!lay && store.ds) {   // chỉ thực hiện: thêm NV cùng nhóm kênh còn làm trong tháng đó (vd. NV đã nghỉ)
+      const coMa = new Set(nv.map(n => String(n.ma).toUpperCase()));
+      const loaiNv = new Set(store.ds.nv.filter(d => coMa.has(String(d.ma).toUpperCase())).map(d => String(d.loai).toUpperCase()));
+      const m0 = nam * 10000 + thang * 100 + 1, m1 = m0 + 30;
+      for (const d of store.ds.nv) {
+        const ma = String(d.ma).toUpperCase();
+        if (coMa.has(ma) || !loaiNv.has(String(d.loai).toUpperCase())) continue;
+        if ((d.tu && d.tu > m1) || (d.den && d.den < m0)) continue;
+        coMa.add(ma); nv.push({ ma: d.ma, ten: d.ten, donvi: d.donvi, kh: {}, w: {}, th: {} });
+      }
+    }
+    return kn.concat([Object.assign({}, sau, { thang, nv, chiTH: !lay, khTheo: lay ? sau.thang : null, name: sau.name })]);
+  }
+
   // ===== Nén gzip + base64 (trình duyệt và Node 18+ đều có CompressionStream) =====
   function base64(bytes) {
     let s = '';
@@ -149,5 +174,5 @@
     return tt;
   }
 
-  root.Store = { taoMoi, gop, xoa, datDieuChinh, chuyenStore, tuSaoLuu, thanhSaoLuu, cacThangCoDuLieu, nen, giaiNen };
+  root.Store = { taoMoi, gop, xoa, datDieuChinh, chuyenStore, tuSaoLuu, thanhSaoLuu, cacThangCoDuLieu, kpiNvChoThang, base64, tuBase64, nen, giaiNen };
 })(typeof window !== 'undefined' ? window : globalThis);

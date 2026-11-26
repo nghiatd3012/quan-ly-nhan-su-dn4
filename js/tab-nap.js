@@ -89,9 +89,15 @@
       return files.reduce(function (p, f) {
         return p.then(function () { return f.arrayBuffer(); }).then(function (buf) {
           var p = Core.parseFile(f.name, new Uint8Array(buf));
-          var r = Store.gop(S.tt, f, p);
+          var truoc = S.tt, r = Store.gop(S.tt, f, p);
           if (r.tt !== S.tt) { doi(r.tt); if (p.kind === 'ds') S.dsMoi = true; }
           themLog(r.thongBao.loai, r.thongBao.html);
+          // Lưu bản gốc file lên Drive; máy tính kéo về OneDrive ở lần chạy báo cáo tới (26/11/2026)
+          if (r.tt !== truoc) {   // file được nhận vào dữ liệu (không phải file cũ hơn / không nhận ra)
+            return Api.goi('admin.luuTep', { ten: f.name, lastModified: f.lastModified, size: f.size, b64: Store.base64(new Uint8Array(buf)) }, true)
+              .then(function (kq) { themLog(kq.ok ? 'ok' : 'warn', kq.ok ? 'Đã lưu bản gốc <b>' + esc(f.name) + '</b> lên Google Drive.'
+                : '<b>' + esc(f.name) + '</b>: chưa lưu được bản gốc lên Drive (' + esc(kq.thongBao || kq.loi) + ').'); });
+          }
         }).catch(function (e) { themLog('err', '<b>' + esc(f.name) + '</b>: không đọc được (' + esc(e.message || e) + ').'); });
       }, Promise.resolve());
     }).catch(function (e) { themLog('err', esc(e.message || e)); })
@@ -206,19 +212,13 @@
 
   // ===== Cập nhật báo cáo =====
   function theCapNhat() {
-    var s = Store.chuyenStore(S.tt);
-    var ds = s.kpinv.map(function (k) { return k.nam + '-' + p2(k.thang); }).sort();
-    if (S.thangCongBo && ds.indexOf(S.thangCongBo) < 0) ds.push(S.thangCongBo);
-    ds.sort();
-    var chon = el('select', { id: 'nap-thang-cong-bo' }, ds.map(function (t) { return el('option', { value: t, text: 'T' + t.slice(5) + '/' + t.slice(0, 4) }); }));
-    chon.value = ds.indexOf(S.thangCongBo) >= 0 ? S.thangCongBo : (ds[ds.length - 1] || '');
+    // Luôn công bố đến tháng mới nhất có số liệu KPI (người dùng chốt 26/11/2026: bỏ ô chọn tháng)
     var nut = el('button', { type: 'button', id: 'nap-cap-nhat', class: 'btn khoi', text: '🔄 Cập nhật báo cáo' });
     var kq = el('div', { id: 'nap-ket-qua', role: 'status' });
     if (ketQua) veKetQua(kq);
-    nut.addEventListener('click', function () { capNhat(nut, chon.value); });
+    nut.addEventListener('click', function () { capNhat(nut); });
     return el('div', { class: 'card' }, [el('h3', { text: '4. Cập nhật báo cáo' }),
-      el('label', { for: 'nap-thang-cong-bo', text: 'Tháng công bố cho nhân viên', style: 'margin-top:0' }), chon,
-      el('p', { class: 'hint', text: 'Tính Báo cáo tổng và KPI NV cho mọi tháng có dữ liệu, lưu dữ liệu gốc lên Google Drive và công bố cho mọi người. Nhân viên chỉ xem KPI đến tháng công bố.' }),
+      el('p', { class: 'hint', text: 'Tính Báo cáo tổng và KPI NV cho mọi tháng có dữ liệu, lưu dữ liệu gốc lên Google Drive và công bố cho mọi người đến tháng mới nhất.' }),
       nut, kq]);
   }
 
@@ -236,7 +236,8 @@
     kq.dataset.xong = '1';
   }
 
-  function capNhat(nut, thangCongBo) {
+  function capNhat(nut) {
+    var thangCongBo = '';
     var kqEl = UI.$('nap-ket-qua');
     delete kqEl.dataset.xong;
     UI.xoa(kqEl).className = '';
@@ -257,15 +258,17 @@
           tong.push({ thang: khoa, D: T.D, warn: T.warn, summary: T.summary });
           T.warn.forEach(function (w) { canhBao.push('Báo cáo tổng T' + nhan + ': ' + w); });
         } catch (e) { canhBao.push('Báo cáo tổng T' + nhan + ': ' + (e.message || e)); }
-        // chỉ đưa KPI NV đúng năm này cho buildKpiNv (nó chọn file theo tháng)
-        var kn = store.kpinv.filter(function (k) { return k.nam === x.nam; });
-        if (!kn.some(function (k) { return k.thang === x.thang; })) { canhBao.push('Tháng ' + nhan + ' chưa có file KPI NV'); return; }
+        // KPI NV của năm này; tháng chưa có file KPI NV xử lý như trên máy (Store.kpiNvChoThang)
+        var kn = Store.kpiNvChoThang(store, x.nam, x.thang);
+        if (!kn) { canhBao.push('Tháng ' + nhan + ' chưa có file KPI NV'); return; }
         try {
           var R = Core.buildKpiNv(Object.assign({}, store, { kpinv: kn }), x.nam, x.thang);
           kpi.push({ thang: khoa, R: R });
           R.warn.forEach(function (w) { canhBao.push('KPI NV T' + nhan + ': ' + w); });
         } catch (e) { canhBao.push('KPI NV T' + nhan + ': ' + (e.message || e)); }
       });
+      var dsK = kpi.map(function (k) { return k.thang; }).sort();
+      thangCongBo = dsK[dsK.length - 1] || S.thangCongBo || '';
       var dsMoi = S.dsMoi && store.ds;
       kqEl.lastChild.textContent = 'Đang lưu dữ liệu gốc lên Google Drive…';
       Store.nen(S.tt).then(function (du_lieu) {
@@ -282,6 +285,8 @@
         return Api.goi('admin.congBo', { kpi: kpi, tong: tong, thangCongBo: thangCongBo }).then(function (c) {
           if (!c.ok) { if (c.loi !== 'HET_PHIEN') xong('loi', ['Đã lưu dữ liệu gốc nhưng chưa công bố được: ' + (c.thongBao || '')]); return null; }
           if (thangCongBo) S.thangCongBo = thangCongBo;
+          // số liệu trên GitHub (du-lieu/) chỉ được cập nhật khi máy tính chạy báo cáo: trình duyệt này đọc Apps Script cho đến lúc đó
+          try { localStorage.setItem('qlns-cong-bo-web', new Date().toISOString()); } catch (e) { }
           var dong = ['✅ Đã cập nhật báo cáo: ' + kpi.length + ' tháng KPI NV, ' + tong.length + ' tháng Báo cáo tổng' +
             (thangCongBo ? '; nhân viên xem đến T' + thangCongBo.slice(5) + '/' + thangCongBo.slice(0, 4) : '') + '.'];
           if (!dsMoi) return dong;
