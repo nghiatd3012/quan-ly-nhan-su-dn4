@@ -13,7 +13,7 @@
     SoTaiKhoan: [/^\d{4,20}$/, 'Số tài khoản chỉ gồm chữ số']
   };
   var BO_KHOANG_TRANG = { SDT: 1, CCCD: 1, SoTaiKhoan: 1 };
-  var LUA_CHON = { GioiTinh: ['', 'Nam', 'Nữ'], DoanVien: ['', 'Có', 'Không'] };
+  var LUA_CHON = { GioiTinh: ['', 'Nam', 'Nữ'] };
 
   App.dangKyThe({ id: 'hoso', ten: 'Thông tin cá nhân', quyenToiThieu: 'NV', ve: ve });
 
@@ -55,12 +55,15 @@
   }
 
   function giaTri(v) { return v ? v : el('span', { class: 'trong', text: '—' }); }
+  function hien(t) { return UI.TRUONG_AN.indexOf(t) < 0; }
+  var SUA_HIEN = UI.TRUONG_SUA.filter(hien);   // các trường NV được sửa, trừ trường ẩn
+  var CA_NHAN = SUA_HIEN.filter(function (t) { return UI.TRUONG_CONG_VIEC.indexOf(t) < 0; });
 
   function veHoSo(than, hs, yc, laCuaToi) {
     var cv = el('div', { class: 'card', id: 'hs-congviec', dataset: { ma: hs.MaNV } },
-      [el('h3', null, ['Thông tin công việc', el('span', { class: 'lock', text: '🔒 Quản trị cập nhật' })])]);
-    UI.TRUONG_KHOA.forEach(function (t) {
-      cv.appendChild(UI.dong(UI.TEN_TRUONG[t], giaTri(t === 'Quyen' ? (UI.TEN_QUYEN[hs[t]] || hs[t]) : hs[t]), { dataset: { truong: t } }));
+      [el('h3', { text: 'Thông tin công việc' })]);
+    UI.TRUONG_KHOA.filter(hien).forEach(function (t) {
+      cv.appendChild(UI.dong(UI.TEN_TRUONG[t], giaTri(hs[t]), { dataset: { truong: t } }));
     });
 
     var cn = el('div', { class: 'card', id: 'hs-canhan' });
@@ -69,7 +72,7 @@
       UI.xoa(cn);
       cn.appendChild(el('h3', null, ['Thông tin cá nhân',
         laCuaToi ? el('button', { type: 'button', id: 'hs-sua', class: 'btn g nho', text: '✏️ Sửa', onclick: veSua }) : null]));
-      UI.TRUONG_SUA.forEach(function (t) {
+      function oXem(t) {
         var y = yc[t], b;
         if (y && y.TrangThai === 'Cho') {
           b = el('span', null, [el('span', { class: 'old', text: y.Cu || 'trống' }),
@@ -77,8 +80,12 @@
         } else if (y && y.TrangThai === 'TuChoi') {
           b = el('span', null, [giaTri(hs[t]), el('span', { class: 'rej', text: 'Bị từ chối' + (y.LyDo ? ': ' + y.LyDo : '') })]);
         } else b = giaTri(hs[t]);
-        cn.appendChild(UI.dong(UI.TEN_TRUONG[t], b, { dataset: { truong: t } }));
-      });
+        return UI.dong(UI.TEN_TRUONG[t], b, { dataset: { truong: t } });
+      }
+      // Email, Mã C2C, Mã CH, User đấu nối, User Mplus2: hiện ở mục công việc (NV vẫn sửa qua nút Sửa)
+      Array.prototype.slice.call(cv.querySelectorAll('[data-cv-sua]')).forEach(function (x) { x.remove(); });
+      UI.TRUONG_CONG_VIEC.forEach(function (t) { var d = oXem(t); d.dataset.cvSua = '1'; cv.appendChild(d); });
+      CA_NHAN.forEach(function (t) { cn.appendChild(oXem(t)); });
       cn.appendChild(tb);
     }
 
@@ -88,7 +95,7 @@
       cn.appendChild(el('h3', { text: 'Sửa thông tin cá nhân' }));
       cn.appendChild(el('p', { class: 'hint', text: 'Thay đổi chỉ có hiệu lực sau khi quản trị duyệt.' }));
       var banDau = {};
-      UI.TRUONG_SUA.forEach(function (t) {
+      SUA_HIEN.forEach(function (t) {
         var y = yc[t];
         var v = y && y.TrangThai === 'Cho' ? (y.Moi || '') : (hs[t] || '');
         banDau[t] = v;
@@ -113,8 +120,8 @@
         el('button', { type: 'button', id: 'hs-huy', class: 'btn g', text: 'Hủy', onclick: veXem })]));
       gui.addEventListener('click', function () {
         var thayDoi = {}, so = 0;
-        for (var i = 0; i < UI.TRUONG_SUA.length; i++) {
-          var t = UI.TRUONG_SUA[i];
+        for (var i = 0; i < SUA_HIEN.length; i++) {
+          var t = SUA_HIEN[i];
           var v = cn.querySelector('[data-o="' + t + '"]').value.trim();
           if (BO_KHOANG_TRANG[t]) v = v.replace(/[\s.]/g, '');
           if (v === banDau[t].trim()) continue;

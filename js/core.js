@@ -668,8 +668,8 @@
   }
   function shortUnit(s) {
     s = clean(s).replace(/\u00D0/g, 'Đ');   // chữ Ð (Eth) gõ nhầm thay cho Đ
-    return s.replace(/^Cửa hàng (MobiFone )?/i, 'CH ').replace(/^Trung tâm giao dịch (Huyện |Thị xã |TP |Thành phố )?/i, 'TTGD ')
-      .replace(/^H\.\s*/, '').replace(/^TX\.\s*/, '').trim();
+    return s.replace(/^Cửa hàng (MobiFone )?/i, '').replace(/^CH\s+/, '').replace(/^Trung tâm giao dịch (Huyện |Thị xã |TP |Thành phố )?/i, '').replace(/^TTGD\s+/, '')
+      .replace(/^H\.\s*/, '').replace(/^TX\.?\s+/, '').replace(/^TP\.?\s+/, '').trim();   // "Hội An", không "CH/TP/TTGD Hội An" (26/11/2026)
   }
   // "MobiWifi 5G: chuyển 2 TB từ A sang B 1, C 1"
   function adjText(list, nm) {

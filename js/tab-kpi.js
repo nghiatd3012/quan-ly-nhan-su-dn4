@@ -106,16 +106,14 @@
         var b = thanh.querySelector('[data-con="' + x[0] + '"]');
         b.classList.toggle('on', x[0] === id); b.setAttribute('aria-selected', x[0] === id ? 'true' : 'false');
       });
-      if (id === 'nv' && bang.veAnh) bang.veAnh();
     }
     ds.forEach(function (x) {
       thanh.appendChild(el('button', { type: 'button', role: 'tab', class: 'tab', id: 'kpi-con-' + x[0], dataset: { con: x[0] }, text: x[1], onclick: function () { mo(x[0]); } }));
     });
     vung.appendChild(thanh);
     ds.forEach(function (x) { vung.appendChild(x[2]); });
-    bang.laDangMo = function () { return nho.tab === 'nv'; };
     mo(nho.tab);
-    if (tong) taiTong(tong, null);
+    if (tong) taiTong(tong);
     taiBang(bang, toi);
     taiCaNhan(toi);
   }
@@ -137,72 +135,18 @@
   }
 
   function veBang(the, R, dsThang, toi) {
-    var ql = laQL(), the0 = the;
+    var ql = laQL();
     the.appendChild(el('h3', { text: 'KPI nhân viên – T' + p2(R.thang) + '/' + R.nam }));
-    var dauBang = el('div', { class: 'loc' });
-    the.appendChild(dauBang);
-    the.appendChild(el('p', { class: 'hint', text: 'Số liệu đến ' + p2(R.ngay) + '/' + p2(R.thang) + '/' + R.nam +
-      ' · tiến độ thời gian ' + Math.round(R.tienDo * 100) + '%' +
-      (R.chiTH ? ' · tháng chưa có file KPI NV: chỉ hiện số thực hiện' : R.khTheo ? ' · kế hoạch lấy theo KPI NV T' + p2(R.khTheo) : '') }));
-    // Ảnh KPI hiện thẳng trên trang như web báo cáo cũ: khổ ngang (gửi group) hoặc dọc (xem điện thoại)
-    var anh = el('div', { class: 'anh-kpi', id: 'kpi-anh' });
-    var seg = el('div', { class: 'seg', role: 'group', 'aria-label': 'Khổ ảnh' });
-    var nutTai = el('button', { type: 'button', id: 'kpi-tai-anh-nv', class: 'btn g', text: '⬇ Tải ảnh PNG', disabled: true });
-    var blobAnh = null, daVe = null;
-    [['ngang', 'Ảnh ngang'], ['doc', 'Ảnh dọc']].forEach(function (x) {
-      seg.appendChild(el('button', { type: 'button', dataset: { ly: x[0] }, 'aria-pressed': khoAnh() === x[0] ? 'true' : 'false', text: x[1],
-        onclick: function () {
-          try { localStorage.setItem('qlns-kpi-kho', x[0]); } catch (e) { }
-          Array.prototype.forEach.call(seg.children, function (b) { b.setAttribute('aria-pressed', b.dataset.ly === x[0] ? 'true' : 'false'); });
-          the0.veAnh();
-        } }));
-    });
-    nutTai.addEventListener('click', function () {
-      if (blobAnh) luuFile('KPI_NV_Vung4_T' + p2(R.thang) + '-' + R.nam + (khoAnh() === 'doc' ? '_doc' : '') + '.png', blobAnh);
-    });
-    the.appendChild(el('div', { class: 'nhom-nut' }, [seg, nutTai]));
-    the.appendChild(anh);
-    the.veAnh = function () {
-      if (!the0.laDangMo || !the0.laDangMo()) return;
-      var kho = khoAnh();
-      if (daVe === kho) return;
-      daVe = kho; blobAnh = null; nutTai.disabled = true;
-      UI.xoa(anh).appendChild(el('div', { class: 'dang-dung' }, [el('span', { class: 'quay nho' }), el('span', { text: 'Đang dựng ảnh KPI…' })]));
-      veAnhKpi(R, kho).then(function (blob) {
-        if (daVe !== kho || !the0.isConnected) return;
-        blobAnh = blob; nutTai.disabled = false;
-        UI.xoa(anh);
-        anh.classList.toggle('doc', kho === 'doc');
-        anh.appendChild(el('img', { src: URL.createObjectURL(blob), alt: 'Ảnh KPI nhân viên Vùng 4 tháng ' + R.thang + '/' + R.nam }));
-        anh.appendChild(el('p', { class: 'hint', text: 'Trên điện thoại: nhấn giữ ảnh để lưu hoặc chia sẻ vào group.' }));
-      }).catch(function (e) {
-        daVe = null;
-        UI.xoa(anh).appendChild(el('p', { class: 'loi-the', text: 'Không tạo được ảnh: ' + (e && e.message || e) + '. Xem bảng chi tiết bên dưới.' }));
-      });
-    };
-    var chiTiet = el('details', { id: 'kpi-chi-tiet' }, [el('summary', { text: 'Xem bảng chi tiết' + (ql ? ', lọc theo chức vụ / nơi làm việc' : '') })]);
-    the.appendChild(chiTiet);
-    the = chiTiet;   // phần bảng bên dưới nằm trong khung "Xem bảng chi tiết"
-
     var nhom = R.groups || [];
     var tatCa = [];
     nhom.forEach(function (g) { (g.rows || []).forEach(function (r) { tatCa.push(r); }); });
     if (ql && toi) datOChonNv(toi, tatCa);
 
-    var cuon = el('div', { class: 'cuon' });
-    function veLai() {
-      UI.xoa(cuon);
-      var hien = nhom.map(function (g) {
-        return { g: g, rows: g.rows.filter(function (r) { return (!nho.cv || r.g === nho.cv) && (!nho.nlv || r.donvi === nho.nlv); }) };
-      }).filter(function (x) { return x.rows.length; });
-      cuon.appendChild(bangNv(R, hien, ql ? (nho.cv || nho.nlv ? 'Tổng nhóm đang lọc' : 'Tổng cộng') : null));
-    }
-
+    // Bộ lọc trên cùng (QL/QT): tháng, chức vụ, nơi làm việc — bảng và ảnh tải về đều theo bộ lọc
     if (ql) {
       var chonThang = el('select', { id: 'kpi-thang', 'aria-label': 'Tháng' }, dsThang.map(function (t) { return el('option', { value: t, text: nhanThang(t) }); }));
       chonThang.value = nho.thang;
-      chonThang.addEventListener('change', function () { nho.thang = chonThang.value; taiBang(the0, null); });
-      dauBang.appendChild(chonThang);
+      chonThang.addEventListener('change', function () { nho.thang = chonThang.value; taiBang(the, null); });
       var cvs = [], nlvs = [];
       tatCa.forEach(function (r) { if (cvs.indexOf(r.g) < 0) cvs.push(r.g); if (r.donvi && nlvs.indexOf(r.donvi) < 0) nlvs.push(r.donvi); });
       nlvs.sort(function (a, b) { return a.localeCompare(b, 'vi'); });
@@ -217,7 +161,39 @@
       chonCv.value = nho.cv; chonNlv.value = nho.nlv;
       chonCv.addEventListener('change', function () { nho.cv = chonCv.value; veLai(); });
       chonNlv.addEventListener('change', function () { nho.nlv = chonNlv.value; veLai(); });
-      the.appendChild(el('div', { class: 'loc' }, [chonCv, chonNlv]));
+      the.appendChild(el('div', { class: 'loc' }, [chonThang, chonCv, chonNlv]));
+    }
+
+    the.appendChild(el('p', { class: 'hint', text: 'Số liệu đến ' + p2(R.ngay) + '/' + p2(R.thang) + '/' + R.nam +
+      ' · tiến độ thời gian ' + Math.round(R.tienDo * 100) + '%' +
+      (R.chiTH ? ' · tháng chưa có file KPI NV: chỉ hiện số thực hiện' : R.khTheo ? ' · kế hoạch lấy theo KPI NV T' + p2(R.khTheo) : '') }));
+
+    // Ảnh PNG chỉ dựng khi bấm tải (ngang: gửi group · dọc: xem điện thoại), theo bộ lọc đang chọn
+    var seg = el('div', { class: 'seg', role: 'group', 'aria-label': 'Khổ ảnh' });
+    [['ngang', 'Ảnh ngang'], ['doc', 'Ảnh dọc']].forEach(function (x) {
+      seg.appendChild(el('button', { type: 'button', dataset: { ly: x[0] }, 'aria-pressed': khoAnh() === x[0] ? 'true' : 'false', text: x[1],
+        onclick: function () {
+          try { localStorage.setItem('qlns-kpi-kho', x[0]); } catch (e) { }
+          Array.prototype.forEach.call(seg.children, function (b) { b.setAttribute('aria-pressed', b.dataset.ly === x[0] ? 'true' : 'false'); });
+        } }));
+    });
+    var nutTai = el('button', { type: 'button', id: 'kpi-tai-anh-nv', class: 'btn g', text: '⬇ Tải ảnh PNG' });
+    nutTai.addEventListener('click', function () {
+      var kho = khoAnh(), Rl = locR(R);
+      if (!Rl.groups.length) { window.alert('Không có nhân viên nào khớp bộ lọc.'); return; }
+      dangVe(nutTai, true, 'Đang tạo ảnh…');
+      veAnhKpi(Rl, kho).then(function (blob) {
+        dangVe(nutTai, false);
+        luuFile('KPI_NV_Vung4_T' + p2(R.thang) + '-' + R.nam + (kho === 'doc' ? '_doc' : '') + '.png', blob);
+      }).catch(function (e) { baoLoi(nutTai, e); });
+    });
+    the.appendChild(el('div', { class: 'nhom-nut' }, [seg, nutTai]));
+
+    var cuon = el('div', { class: 'cuon' });
+    function veLai() {
+      UI.xoa(cuon);
+      var hien = locR(R).groups.map(function (g) { return { g: g, rows: g.rows }; });
+      cuon.appendChild(bangNv(R, hien, ql ? (nho.cv || nho.nlv ? 'Tổng nhóm đang lọc' : 'Tổng cộng') : null));
     }
     veLai();
     the.appendChild(cuon);
@@ -226,11 +202,28 @@
       the.appendChild(el('ul', { class: 'ghi-chu' }, R.notes.map(function (n) { return el('li', { text: 'Điều chỉnh: ' + n }); })));
     }
     if (ql && R.warn && R.warn.length) {
-      the0.appendChild(el('div', { id: 'kpi-canh-bao', class: 'canh-bao' }, [el('b', { text: '⚠️ Cảnh báo' }),
+      the.appendChild(el('div', { id: 'kpi-canh-bao', class: 'canh-bao' }, [el('b', { text: '⚠️ Cảnh báo' }),
         el('ul', null, R.warn.map(function (w) { return el('li', { text: w }); }))]));
     }
-    if (!dauBang.children.length) dauBang.remove();
-    the0.veAnh();
+  }
+  // Bản R chỉ gồm NV khớp bộ lọc (chức vụ, nơi làm việc); có lọc thì tính lại các ô tổng theo cùng công thức core.js
+  function locR(R) {
+    if (!nho.cv && !nho.nlv) return R;
+    var groups = (R.groups || []).map(function (g) {
+      return Object.assign({}, g, { rows: g.rows.filter(function (r) { return (!nho.cv || r.g === nho.cv) && (!nho.nlv || r.donvi === nho.nlv); }) });
+    }).filter(function (g) { return g.rows.length; });
+    var rows = [];
+    groups.forEach(function (g) { g.rows.forEach(function (r) { rows.push(r); }); });
+    var nhap = {};
+    (R.cols || []).forEach(function (c) { nhap[c.k] = !!c.nhap; });
+    var totals = (R.totals || []).map(function (t) {
+      var cs = rows.map(function (r) { return (r.cells || []).filter(function (x) { return x.k === t.k; })[0] || {}; });
+      var kh = cs.reduce(function (a, x) { return a + (x.kh || 0); }, 0);
+      var coTh = cs.some(function (x) { return x.kh > 0 && x.th != null; });
+      var v = cs.reduce(function (a, x) { return a + (x.th || 0); }, 0);
+      return { k: t.k, name: t.name, kh: kh, th: nhap[t.k] && !coTh && !R.chiTH ? null : v, p: kh > 0 && (!nhap[t.k] || coTh) ? v / kh * 100 : null };
+    });
+    return Object.assign({}, R, { groups: groups, totals: totals });
   }
   function khoAnh() {
     var s = null;
@@ -356,30 +349,20 @@
     if (f && e.source === f.contentWindow && e.data && e.data.qlnsDashH) f.style.height = (e.data.qlnsDashH + 4) + 'px';
   });
 
-  function taiTong(the, thang) {
-    layDuLieu('tong.get', thang ? { thang: thang } : {}, function (kq) {
+  function taiTong(the) {
+    layDuLieu('tong.get', {}, function (kq) {
       if (!App.conHieuLuc()) return;
       UI.xoa(the);
       the.appendChild(el('h3', { text: 'Báo cáo tổng Vùng 4' }));
       if (!kq.ok) { loiThe(the, kq, 'Không tải được Báo cáo tổng'); return; }
       if (!kq.D) { the.appendChild(el('p', { class: 'hint', text: 'Chưa có Báo cáo tổng.' })); return; }
-      var ds = kq.dsThang || [];
-      if (ds.length > 1) {
-        var sel = el('select', { id: 'kpi-tong-thang', 'aria-label': 'Tháng Báo cáo tổng' }, ds.map(function (t) { return el('option', { value: t, text: nhanThang(t) }); }));
-        sel.value = kq.thang;
-        sel.addEventListener('change', function () { taiTong(the, sel.value); });
-        the.querySelector('h3').appendChild(sel);
-      }
       if (kq.warn && kq.warn.length) {
         the.appendChild(el('div', { id: 'kpi-tong-canh-bao', class: 'canh-bao' }, [el('b', { text: '⚠️ Cảnh báo' }),
           el('ul', null, kq.warn.map(function (w) { return el('li', { text: w }); }))]));
       }
       if (kq.summary) the.appendChild(oTomTat(kq.summary, kq.thang));
       var khung = el('iframe', { id: 'kpi-dash', class: 'dash', title: 'Báo cáo tổng Vùng 4' });
-      // giống web báo cáo cũ: dashboard hiện thẳng dưới các ô tóm tắt
-      var nut = el('button', { type: 'button', id: 'kpi-tai-anh-tong', class: 'btn g', text: '⬇ Tải ảnh Báo cáo tổng' });
-      nut.addEventListener('click', function () { taiAnhTong(nut, kq.D); });
-      the.appendChild(el('div', { class: 'nhom-nut' }, [nut]));
+      // phần trên luôn là tháng mới nhất; xem tháng khác bằng ô chọn tháng trong dashboard bên dưới
       the.appendChild(el('div', { id: 'kpi-tong-chi-tiet' }, [khung]));
       layMauDash().then(function (mau) { khung.srcdoc = dashHtml(mau, kq.D, true); })
         .catch(function () { khung.replaceWith(el('p', { class: 'loi-the', text: 'Không tải được mẫu Báo cáo tổng (dashboard.html).' })); });
@@ -433,52 +416,5 @@
       var e = san.querySelector('.kimg');
       return window.html2canvas(e, { scale: doc ? 2 : 1, backgroundColor: '#eef2f7', logging: false, width: e.offsetWidth, height: e.offsetHeight, windowWidth: doc ? 800 : 1800 });
     }).then(thanhBlob).then(function (blob) { san.remove(); return blob; }, function (e) { san.remove(); throw e; });
-  }
-
-  // html2canvas 1.4.1 không đọc được màu dạng color(...)/oklch (vd. color-mix của ô nhiệt):
-  // trong khung chụp (dùng một lần) đổi các màu đó sang rgba qua một canvas 1×1.
-  function doiMauRgb(d) {
-    var cv = d.createElement('canvas'); cv.width = cv.height = 1;
-    var ctx = cv.getContext('2d', { willReadFrequently: true });
-    function rgba(v) {
-      ctx.clearRect(0, 0, 1, 1); ctx.fillStyle = '#000'; ctx.fillStyle = v; ctx.fillRect(0, 0, 1, 1);
-      var x = ctx.getImageData(0, 0, 1, 1).data;
-      return 'rgba(' + x[0] + ',' + x[1] + ',' + x[2] + ',' + (x[3] / 255).toFixed(3) + ')';
-    }
-    var THUOC_TINH = ['color', 'background-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'fill', 'stroke'];
-    Array.prototype.forEach.call(d.querySelectorAll('*'), function (e) {
-      var cs = d.defaultView.getComputedStyle(e);
-      THUOC_TINH.forEach(function (t) {
-        var v = cs.getPropertyValue(t);
-        if (/^(color|oklch|oklab|lab|lch)\(/.test(v)) e.style.setProperty(t, rgba(v));
-      });
-    });
-  }
-
-  // Vẽ Báo cáo tổng ở khổ máy tính (1440px, nền sáng) trong một khung ẩn rồi chụp bằng html2canvas nạp trong chính khung đó.
-  function taiAnhTong(nut, D) {
-    dangVe(nut, true, 'Đang vẽ ảnh…');
-    var khung = el('iframe', { style: 'position:fixed;left:-20000px;top:0;width:1440px;height:900px;border:0', 'aria-hidden': 'true' });
-    Promise.all([layMauDash(), napHtml2canvas()]).then(function (kq) {
-      var html = dashHtml(kq[0], D, false).replace('<html lang="vi">', '<html lang="vi" data-theme="light">')
-        .replace('</body>', '<script src="' + h2cUrl + '"><' + '/script></body>');
-      return new Promise(function (ok, loi) {
-        khung.onload = ok;
-        khung.onerror = loi;
-        khung.srcdoc = html;
-        document.body.appendChild(khung);
-      });
-    }).then(function () {
-      var w = khung.contentWindow, d = khung.contentDocument;
-      if (!w.html2canvas) throw new Error('không nạp được html2canvas trong khung');
-      return (d.fonts ? d.fonts.ready : Promise.resolve()).then(function () {
-        doiMauRgb(d);
-        var goc = d.documentElement;
-        return w.html2canvas(d.body, { scale: 1, logging: false, backgroundColor: '#f9f9f7', windowWidth: 1440, width: goc.scrollWidth, height: goc.scrollHeight });
-      });
-    }).then(thanhBlob).then(function (blob) {
-      khung.remove(); dangVe(nut, false);
-      luuFile('BaoCao_PTM_Vung4_T' + p2(D.thang) + '-' + D.nam + '.png', blob);
-    }).catch(function (e) { khung.remove(); baoLoi(nut, e); });
   }
 })();

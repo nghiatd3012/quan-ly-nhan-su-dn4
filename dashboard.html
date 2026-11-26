@@ -36,7 +36,7 @@
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--page);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
-.wrap{max-width:1280px;margin:0 auto;padding:20px 16px 48px}
+.wrap{max-width:1600px;margin:0 auto;padding:20px 16px 48px}
 header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
 h1{font-size:22px;margin:0 0 2px;font-weight:650;letter-spacing:-.01em}
 .sub{color:var(--ink-2);font-size:13px}
@@ -47,7 +47,10 @@ select,input[type=search]{font:inherit;color:var(--ink);background:var(--surface
 .seg button[aria-pressed=true]{background:var(--surface-2);color:var(--ink);font-weight:600}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
 h2{font-size:15px;margin:0 0 12px;font-weight:620}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:12px}
+.tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:12px}
+@media (max-width:1100px){.tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:700px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:420px){.tiles{grid-template-columns:minmax(0,1fr)}}
 .tile .lab{display:flex;align-items:center;gap:8px;color:var(--ink-2);font-size:13px;font-weight:550}
 .dot{width:10px;height:10px;border-radius:3px;flex:none}
 .tile .big{font-size:34px;font-weight:650;margin:6px 0 0;letter-spacing:-.02em}
@@ -133,7 +136,6 @@ label.chk{font-size:12.5px;color:var(--ink-2);display:inline-flex;gap:6px;align-
     <div class="card">
       <h2 id="grpTitle">Theo nhóm kênh</h2>
       <div class="tbl-wrap"><table id="tblGrp"></table></div>
-      <div class="note" style="margin-top:14px" id="excl"></div>
     </div>
   </section>
 
@@ -247,23 +249,20 @@ function pctClass(p){ return p==null? '' : (p>=100?'ok':(p<80?'low':'')); }
 function renderTiles(){
   const ms = rangeM(), ytdMs = D.months.filter(x=>x<=state.m);
   $('tiles').innerHTML = T.map(t=>{
-    const th = totalM(t.k, ms), kh = kpiM(t.k, ms);
+    const th = totalM(t.k, ms), khDu = kpiMonthsOnly(t.k, ms).length === ms.length, kh = khDu ? kpiM(t.k, ms) : null;
     const thK = totalM(t.k, kpiMonthsOnly(t.k, ms));   // chỉ so với các tháng có giao KH
     const p = kh ? thK/kh*100 : null;
-    const ytdTh = totalM(t.k, ytdMs), ytdKmMs = kpiMonthsOnly(t.k, ytdMs), ytdKh = kpiM(t.k, ytdMs);
+    const ytdTh = totalM(t.k, ytdMs), ytdKmMs = kpiMonthsOnly(t.k, ytdMs), ytdKh = ytdKmMs.length === ytdMs.length ? kpiM(t.k, ytdMs) : null;
     const ytdThK = sumArr(D.nv.reduce((a,nv)=>a.map((v,i)=>v+nv[t.k][i]),Array(12).fill(0)), ytdKmMs);
     const ytdP = ytdKh ? ytdThK/ytdKh*100 : null;
     const w = p==null?0:Math.min(100,p);
     return `<div class="card tile">
       <div class="lab"><span class="dot" style="background:${t.color}"></span>${t.name}</div>
-      <div class="big">${fmt(th)}${t.k==='WIFI'?` <small title="Mọi TB FWD, kể cả chưa có gói">(${fmt(totalM('FWD',ms))} FWD)</small>`:''} <small>/ ${kh==null?'không giao KH':fmt(kh)+' KH'}</small></div>
+      <div class="big">${fmt(th)}${t.k==='WIFI'?` <small title="Mọi TB FWD, kể cả chưa có gói">(${fmt(totalM('FWD',ms))} FWD)</small>`:''} <small>/ ${kh!=null?fmt(kh)+' KH':(kpiMonthsOnly(t.k,ms).length?'KH không đủ tháng':'không giao KH')}</small></div>
       <div class="bar" role="img" aria-label="Hoàn thành ${fmtP(p)}"><i style="width:${w}%;background:${t.color}"></i></div>
       <div class="meta"><span>Hoàn thành <span class="pct ${pctClass(p)}">${fmtP(p)}</span></span>
         <span>${kh!=null && thK<kh ? 'Còn thiếu '+fmt(kh-thK) : (kh!=null?'Vượt '+fmt(thK-kh):'')}</span></div>
-      ${state.ytd && kh!=null && thK!==th ? `<div class="meta">% tính trên các tháng có giao KH (T${kpiMonthsOnly(t.k,ms).join(', T')}): TH ${fmt(thK)}</div>` : ''}
-      ${state.ytd ? '' : `<div class="ytd">Lũy kế T1–T${state.m}: <b style="color:var(--ink)">${fmt(ytdTh)}</b>${ytdKh!=null?(ytdKmMs.length<ytdMs.length
-        ? `<br>Các tháng có giao KH (T${ytdKmMs.join(', T')}): TH ${fmt(ytdThK)} / KH ${fmt(ytdKh)} · <span class="pct ${pctClass(ytdP)}">${fmtP(ytdP)}</span>`
-        : ` · KH ${fmt(ytdKh)} · <span class="pct ${pctClass(ytdP)}">${fmtP(ytdP)}</span>`):''}</div>`}
+      ${state.ytd ? '' : `<div class="ytd">Lũy kế T1–T${state.m}: <b style="color:var(--ink)">${fmt(ytdTh)}</b>${ytdKh!=null?` · KH ${fmt(ytdKh)} · <span class="pct ${pctClass(ytdP)}">${fmtP(ytdP)}</span>`:''}</div>`}
     </div>`;
   }).join('');
 }
@@ -354,12 +353,6 @@ function renderGroups(){
   $('tblGrp').innerHTML = `<thead><tr><th>Nhóm</th><th class="num">Mã có TB</th>${GC.map(c=>`<th class="num">${c[1]}</th>`).join('')}</tr></thead>
     <tbody>${keys.map(k=>`<tr><td>${esc(k==='Khác'?'Khác (ĐL, Điểm bán…)':k)}</td><td class="num">${g[k].cnt}</td>${GC.map(c=>`<td class="num ${g[k][c[0]]?'':'zero'}">${fmt(g[k][c[0]]||0)}</td>`).join('')}</tr>`).join('')}</tbody>
     <tfoot><tr><td>Vùng 4</td><td class="num">${keys.reduce((s,k)=>s+g[k].cnt,0)}</td>${GC.map(c=>`<td class="num">${fmt(vung[c[0]])}</td>`).join('')}</tr></tfoot>`;
-  // TB bị loại do ngoài thời gian công tác
-  const TB = T.filter(t=>BASE.includes(t.k));
-  const ex = D.nv.map(n=>({n, v:TB.map(t=>sumArr(n['x'+t.k],ms))})).filter(o=>o.v.some(x=>x>0)).sort((a,b)=>b.v[0]+b.v[1]+b.v[2]-a.v[0]-a.v[1]-a.v[2]);
-  $('excl').innerHTML = ex.length ? `<b>Không tính do ngoài thời gian công tác</b> (theo cột Thời gian tới/đi):
-    <ul>${ex.map(o=>`<li>${esc(o.n.ma)} – ${esc(o.n.ten||'')}: ${TB.map((t,i)=>o.v[i]?`${t.short} ${fmt(o.v[i])}`:'').filter(Boolean).join(', ')}</li>`).join('')}</ul>`
-    : '<span class="muted">Không có TB nào bị loại do ngoài thời gian công tác.</span>';
 }
 
 function renderHeat(){

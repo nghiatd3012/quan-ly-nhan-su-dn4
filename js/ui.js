@@ -41,13 +41,17 @@ window.UI = (function () {
   // Khớp TRUONG_KHOA / TRUONG_SUA trong apps-script/Logic.gs.
   var TRUONG_KHOA = ['MaNV', 'HoTen', 'ChucVu', 'NoiLamViec', 'NgayVao', 'Quyen'];
   var TRUONG_SUA = ['NgaySinh', 'GioiTinh', 'SDT', 'Email', 'DiaChi', 'CCCD', 'SoTaiKhoan', 'DoanVien', 'GhiChu',
-  'MST', 'NganHang', 'MaC2C', 'MaCH', 'MaCHCu', 'UserDauNoi', 'SoEZ', 'DiaBan'];   // 8 trường chuyển từ trang nhân sự cũ (26/11/2026)
+  'MST', 'NganHang', 'MaC2C', 'MaCH', 'MaCHCu', 'UserDauNoi', 'SoEZ', 'DiaBan',   // 8 trường chuyển từ trang nhân sự cũ (26/11/2026)
+  'UserMplus2'];
+  // Hồ sơ: các trường NV tự sửa nhưng hiện ở mục công việc; các trường ẩn (vẫn giữ trong Sheet) (26/11/2026)
+  var TRUONG_CONG_VIEC = ['Email', 'MaC2C', 'MaCH', 'UserDauNoi', 'UserMplus2'];
+  var TRUONG_AN = ['Quyen', 'DoanVien', 'GhiChu', 'SoEZ'];
   var TEN_TRUONG = {
     MaNV: 'Mã NV', HoTen: 'Họ tên', ChucVu: 'Chức vụ', NoiLamViec: 'Nơi làm việc', NgayVao: 'Ngày vào làm', Quyen: 'Quyền',
     NgaySinh: 'Ngày sinh', GioiTinh: 'Giới tính', SDT: 'Số điện thoại', Email: 'Email', DiaChi: 'Địa chỉ',
     CCCD: 'Số CCCD', SoTaiKhoan: 'Số tài khoản', DoanVien: 'Đoàn viên', GhiChu: 'Ghi chú',
     MST: 'Mã số thuế cá nhân', NganHang: 'Ngân hàng', MaC2C: 'Mã C2C', MaCH: 'Mã cửa hàng', MaCHCu: 'Mã cửa hàng cũ',
-    UserDauNoi: 'User đấu nối', SoEZ: 'Số EZ', DiaBan: 'Địa bàn phụ trách'
+    UserDauNoi: 'User đấu nối', SoEZ: 'Số EZ', DiaBan: 'Địa bàn phụ trách', UserMplus2: 'User Mplus2'
   };
 
   // Chuỗi ISO → "dd/mm/yyyy HH:MM" giờ máy.
@@ -93,5 +97,5 @@ window.UI = (function () {
   }
 
   return { napThuVien: napThuVien, luuFile: luuFile, el: el, $: $, xoa: xoa, mauPhanTram: mauPhanTram, phanTram: phanTram, dangTai: dangTai, TEN_QUYEN: TEN_QUYEN,
-    TRUONG_KHOA: TRUONG_KHOA, TRUONG_SUA: TRUONG_SUA, TEN_TRUONG: TEN_TRUONG, ngayGio: ngayGio, dong: dong };
+    TRUONG_KHOA: TRUONG_KHOA, TRUONG_SUA: TRUONG_SUA, TRUONG_CONG_VIEC: TRUONG_CONG_VIEC, TRUONG_AN: TRUONG_AN, TEN_TRUONG: TEN_TRUONG, ngayGio: ngayGio, dong: dong };
 })();
