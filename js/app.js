@@ -3,7 +3,7 @@
 window.App = (function () {
   var $ = UI.$, el = UI.el;
   var QUYEN = { NV: 1, QL: 2, QT: 3 };
-  var THU_TU = ['hoso', 'kpi', 'duyet', 'nap'];
+  var THU_TU = ['kpi', 'hoso', 'duyet', 'nap'];
   var dsThe = {};
   var demThe = {}; // số đếm trên tên thẻ, giữ lại khi vẽ lại thanh thẻ
   var theDangMo = null;
