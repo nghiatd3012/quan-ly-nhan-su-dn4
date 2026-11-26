@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Báo cáo PTM Vùng 4</title>
+<style>
+:root{
+  color-scheme: light;
+  --page:#f9f9f7; --surface:#fcfcfb; --surface-2:#f3f2ee;
+  --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
+  --s-ptm:#52514e; --s-mbf:#2a78d6; --s-sme:#eb6834; --s-fiber:#1baf7a;
+  --good:#006300; --warn-bg:#fff4d6; --bad:#d03b3b;
+  --seq-0:#cde2fb; --seq-1:#2a78d6; --accent:#2a78d6;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --page:#0d0d0d; --surface:#1a1a19; --surface-2:#232321;
+    --ink:#f0efec; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+    --s-ptm:#c3c2b7; --s-mbf:#3987e5; --s-sme:#d95926; --s-fiber:#199e70;
+    --good:#0ca30c; --warn-bg:#3a2f10; --bad:#e66767;
+    --seq-0:#1c2a3d; --seq-1:#3987e5; --accent:#3987e5;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --page:#0d0d0d; --surface:#1a1a19; --surface-2:#232321;
+  --ink:#f0efec; --ink-2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+  --s-ptm:#c3c2b7; --s-mbf:#3987e5; --s-sme:#d95926; --s-fiber:#199e70;
+  --good:#0ca30c; --warn-bg:#3a2f10; --bad:#e66767;
+  --seq-0:#1c2a3d; --seq-1:#3987e5; --accent:#3987e5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
+h1{font-size:22px;margin:0 0 2px;font-weight:650;letter-spacing:-.01em}
+.sub{color:var(--ink-2);font-size:13px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+select,input[type=search]{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;min-height:34px}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{font:inherit;border:0;background:transparent;color:var(--ink-2);padding:6px 12px;cursor:pointer;min-height:34px}
+.seg button[aria-pressed=true]{background:var(--surface-2);color:var(--ink);font-weight:600}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
+h2{font-size:15px;margin:0 0 12px;font-weight:620}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:12px}
+.tile .lab{display:flex;align-items:center;gap:8px;color:var(--ink-2);font-size:13px;font-weight:550}
+.dot{width:10px;height:10px;border-radius:3px;flex:none}
+.tile .big{font-size:34px;font-weight:650;margin:6px 0 0;letter-spacing:-.02em}
+.tile .big small{font-size:15px;color:var(--ink-2);font-weight:500;letter-spacing:0}
+.bar{height:8px;background:var(--surface-2);border-radius:4px;margin:10px 0 6px;overflow:hidden;position:relative}
+.bar i{display:block;height:100%;border-radius:4px}
+.tile .meta{display:flex;justify-content:space-between;color:var(--ink-2);font-size:12.5px;gap:8px;flex-wrap:wrap}
+.pct{font-weight:650;color:var(--ink)}
+.pct.ok{color:var(--good)} .pct.low{color:var(--bad)}
+.ytd{margin-top:8px;padding-top:8px;border-top:1px solid var(--grid);font-size:12.5px;color:var(--ink-2)}
+.trend{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:12px}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--ink-2);margin:-4px 0 6px;flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend .tick{width:14px;height:0;border-top:2px dashed var(--ink-2)}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--border);box-shadow:0 4px 16px rgba(0,0,0,.12);border-radius:8px;padding:8px 10px;font-size:12.5px;white-space:nowrap;opacity:0;transition:opacity .08s;z-index:5}
+.tip b{display:block;margin-bottom:2px}
+.grid2{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px;margin-bottom:12px}
+@media (max-width:900px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.card{min-width:0}
+.trend{grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--grid);text-align:left;white-space:nowrap}
+th{color:var(--ink-2);font-weight:600;font-size:12px;position:sticky;top:0;background:var(--surface);cursor:pointer;user-select:none}
+th.num,td.num{text-align:right;font-variant-numeric:tabular-nums}
+th[aria-sort=ascending]::after{content:" ▲";font-size:9px} th[aria-sort=descending]::after{content:" ▼";font-size:9px}
+tbody tr:hover{background:var(--surface-2)}
+tfoot td{font-weight:650;border-top:2px solid var(--axis);border-bottom:0}
+td.zero{color:var(--muted)}
+.tag{display:inline-block;padding:1px 7px;border-radius:10px;background:var(--surface-2);color:var(--ink-2);font-size:11.5px}
+.share{display:inline-block;height:6px;border-radius:3px;background:var(--accent);vertical-align:middle;margin-right:6px;opacity:.8}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.toolbar h2{margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:12.5px;border:1px solid var(--border);background:var(--surface);color:var(--ink-2);border-radius:14px;padding:3px 10px;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+label.chk{font-size:12.5px;color:var(--ink-2);display:inline-flex;gap:6px;align-items:center}
+.heat td.num{min-width:46px}
+.note{font-size:12.5px;color:var(--ink-2)}
+.note ul{margin:6px 0 0;padding-left:18px}
+.note li{margin:2px 0}
+.warn{background:var(--warn-bg);border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:12.5px}
+.muted{color:var(--muted)}
+@media print{.controls,.chips,label.chk{display:none}.card{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1 id="title">Báo cáo PTM Vùng 4</h1>
+      <div class="sub" id="subtitle"></div>
+    </div>
+    <div class="controls">
+      <label class="sub" for="selMonth">Tháng</label>
+      <select id="selMonth"></select>
+      <div class="seg" role="group" aria-label="Phạm vi">
+        <button id="btnMonth" aria-pressed="true">Trong tháng</button>
+        <button id="btnYtd" aria-pressed="false">Lũy kế từ T1</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="warn"></div>
+  <section class="tiles" id="tiles"></section>
+
+  <section class="trend" id="trend"></section>
+
+  <section class="grid2">
+    <div class="card">
+      <div class="toolbar">
+        <h2 id="nvTitle">Theo nhân viên</h2>
+        <div class="controls">
+          <input type="search" id="q" placeholder="Tìm mã / tên / đơn vị" aria-label="Tìm nhân viên">
+          <label class="chk"><input type="checkbox" id="hideZero" checked> Ẩn mã = 0</label>
+        </div>
+      </div>
+      <div class="chips" id="chips" style="margin-bottom:10px"></div>
+      <div class="tbl-wrap" style="max-height:620px"><table id="tblNv"></table></div>
+    </div>
+    <div class="card">
+      <h2 id="grpTitle">Theo nhóm kênh</h2>
+      <div class="tbl-wrap"><table id="tblGrp"></table></div>
+      <div class="note" style="margin-top:14px" id="excl"></div>
+    </div>
+  </section>
+
+  <section class="card" style="margin-bottom:12px">
+    <div class="toolbar">
+      <h2>Nhân viên × tháng</h2>
+      <div class="seg" role="group" aria-label="Chỉ tiêu" id="segMetric"></div>
+    </div>
+    <div class="tbl-wrap" style="max-height:620px"><table id="tblHeat" class="heat"></table></div>
+  </section>
+
+  <section class="card note" id="rules"></section>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+const D = /*__DATA__*/null;
+// Chỉ tiêu gộp: TB PTM = MobiFone + Saymee (thực hiện và KH đều cộng 2 chỉ tiêu)
+const addArr = (a,b) => a.map((v,i)=>(v==null&&b[i]==null)? null : (v||0)+(b[i]||0));
+D.kpi.PTM = addArr(D.kpi.MBF, D.kpi.SME);
+D.nv.forEach(n=>{ n.PTM = addArr(n.MBF,n.SME).map(v=>v||0); n.xPTM = addArr(n.xMBF,n.xSME).map(v=>v||0); });
+const BASE = ['MBF','SME','FIBER'];   // các chỉ tiêu gốc (không trùng nhau)
+// Nhóm hiển thị: chỉ GDV / NVBH / AM / Fiber là nhân viên. Mã C2C gộp vào NV chủ quản (cột "TB C2C"),
+// ĐL / Điểm bán / loại khác (và C2C không xác định được chủ) gộp thành "Khác".
+const NVG = ['GDV','NVBH','AM','Fiber'];
+const Z12 = () => Array(12).fill(0);
+D.nv.forEach(n=>{ n.C2C = Z12(); n.owner = null; });
+D.nv.forEach(n=>{
+  if (n.loai!=='C2C') return;
+  let o = D.nv.find(x=>NVG.includes(x.loai) && x.ma===n.ma.replace(/_C2C$/i,''));
+  if (!o) { const m = String(n.donvi||'').match(/^CHLK\s+(.+)$/i);   // vd "CHLK Song Thảo" -> NV có tên kết thúc "Song Thảo"
+    if (m) { const c = D.nv.filter(x=>NVG.includes(x.loai) && x.ten.toLowerCase().endsWith(m[1].trim().toLowerCase())); if (c.length===1) o = c[0]; } }
+  if (o) { n.owner = o; for (let i=0;i<12;i++) o.C2C[i] += (n.MBF[i]||0)+(n.SME[i]||0); }
+});
+D.nv.forEach(n=>{ n.grp = NVG.includes(n.loai) ? n.loai : (n.owner ? 'C2C' : 'Khác'); });
+const isNv = n => NVG.includes(n.grp);
+const T = [
+  {k:'PTM',   name:'TB PTM (MobiFone + Saymee)', short:'MBF+Saymee', color:'var(--s-ptm)'},
+  {k:'MBF',   name:'TB PTM MobiFone', short:'MobiFone', color:'var(--s-mbf)'},
+  {k:'SME',   name:'TB PTM Saymee (THGT)', short:'Saymee', color:'var(--s-sme)'},
+  {k:'FIBER', name:'TB PTM Fiber', short:'Fiber', color:'var(--s-fiber)'}
+];
+const fmt = n => (n==null||isNaN(n)) ? '–' : Math.round(n).toLocaleString('vi-VN');
+const fmtP = p => (p==null||!isFinite(p)) ? '–' : p.toLocaleString('vi-VN',{maximumFractionDigits:1})+'%';
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $ = id => document.getElementById(id);
+
+let state = { m: D.thang, ytd:false, loai:'Tất cả', q:'', hideZero:true, sort:{k:'PTM',dir:-1}, metric:'PTM' };
+try { const s = JSON.parse(localStorage.getItem('ptm4-ui')||'{}'); if (s.metric && T.some(t=>t.k===s.metric)) state.metric=s.metric; if (typeof s.hideZero==='boolean') state.hideZero=s.hideZero; } catch(e){}
+const save = () => { try { localStorage.setItem('ptm4-ui', JSON.stringify({metric:state.metric, hideZero:state.hideZero})); } catch(e){} };
+
+// tổng trong phạm vi tháng
+const rangeM = () => state.ytd ? D.months.filter(x=>x<=state.m) : [state.m];
+const sumArr = (a, ms) => ms.reduce((s,m)=>s+(a[m-1]||0),0);
+const nvVal = (nv,k,ms) => k==='TOT' ? BASE.reduce((s,b)=>s+sumArr(nv[b],ms),0) : sumArr(nv[k],ms);
+const totalM = (k,ms) => D.nv.reduce((s,nv)=>s+nvVal(nv,k,ms),0);
+// Giá trị hiển thị của 1 NV: MobiFone = mã của NV; TB C2C = các mã C2C của NV; MBF+Saymee = MobiFone + C2C + Saymee
+const rowVals = (n,ms) => { const r = {MBF:sumArr(n.MBF,ms), C2C:sumArr(n.C2C,ms), SME:sumArr(n.SME,ms), FIBER:sumArr(n.FIBER,ms)}; r.PTM = r.MBF+r.C2C+r.SME; return r; };
+const KEYS = ['PTM','MBF','C2C','SME','FIBER'];
+const addV = (a,b) => { KEYS.forEach(k=>a[k]=(a[k]||0)+b[k]); return a; };
+// "Khác" = mọi mã không phải NV và không phải C2C đã gán chủ (C2C của NV đã nằm trong dòng NV)
+const otherVals = ms => D.nv.filter(n=>n.grp==='Khác').reduce((a,n)=>{ const v=rowVals(n,ms); v.PTM=v.MBF+v.SME; return addV(a,v); }, {});
+// Vùng 4 tách cột: MobiFone (không gồm C2C) + TB C2C + Saymee = MBF+Saymee toàn vùng
+const vungVals = ms => { const c2c = D.nv.filter(n=>n.grp==='C2C'), cM = c2c.reduce((s,n)=>s+sumArr(n.MBF,ms),0), cS = c2c.reduce((s,n)=>s+sumArr(n.SME,ms),0);
+  const r={MBF:totalM('MBF',ms)-cM, C2C:cM+cS, SME:totalM('SME',ms)-cS, FIBER:totalM('FIBER',ms)}; r.PTM=r.MBF+r.C2C+r.SME; return r; };
+const kpiM = (k,ms) => { let s=0, any=false; ms.forEach(m=>{const v=D.kpi[k][m-1]; if(v!=null){s+=v;any=true;}}); return any? s : null; };
+const kpiMonthsOnly = (k,ms) => ms.filter(m=>D.kpi[k][m-1]!=null);
+
+function init(){
+  const sel = $('selMonth');
+  sel.innerHTML = D.months.map(m=>`<option value="${m}">T${m}/${D.nam}</option>`).join('');
+  sel.value = state.m;
+  sel.onchange = () => { state.m = +sel.value; render(); };
+  $('btnMonth').onclick = () => { state.ytd=false; render(); };
+  $('btnYtd').onclick = () => { state.ytd=true; render(); };
+  $('q').oninput = e => { state.q = e.target.value.trim().toLowerCase(); renderNv(); };
+  $('hideZero').checked = state.hideZero;
+  $('hideZero').onchange = e => { state.hideZero = e.target.checked; save(); renderNv(); renderHeat(); };
+  const loais = ['Tất cả', ...NVG.filter(g=>D.nv.some(n=>n.grp===g))];
+  $('chips').innerHTML = loais.map(l=>`<button class="chip" data-l="${esc(l)}">${esc(l)}</button>`).join('');
+  $('chips').onclick = e => { const b=e.target.closest('.chip'); if(!b) return; state.loai=b.dataset.l; renderNv(); renderHeat(); };
+  $('segMetric').innerHTML = T.map(t=>`<button data-k="${t.k}">${t.short}</button>`).join('');
+  $('segMetric').onclick = e => { const b=e.target.closest('button'); if(!b) return; state.metric=b.dataset.k; save(); renderHeat(); };
+  renderRules();
+  render();
+}
+
+function render(){
+  $('btnMonth').setAttribute('aria-pressed', !state.ytd);
+  $('btnYtd').setAttribute('aria-pressed', state.ytd);
+  const lbl = state.ytd ? `Lũy kế T1–T${state.m}/${D.nam}` : `Tháng ${state.m}/${D.nam}`;
+  $('title').textContent = `Báo cáo PTM Vùng 4 — ${lbl}`;
+  document.title = `PTM Vùng 4 ${state.ytd?'LK ':''}T${state.m}-${D.nam}`;
+  $('subtitle').textContent = `Dữ liệu cập nhật ${D.taoLuc} · ${D.nv.length} mã NV/kênh trong danh sách DN4`;
+  $('warn').innerHTML = D.months.includes(state.m) ? '' : `<div class="warn">Chưa có dữ liệu tháng ${state.m}.</div>`;
+  $('nvTitle').textContent = `Theo nhân viên — ${lbl}`;
+  $('grpTitle').textContent = `Theo nhóm kênh — ${lbl}`;
+  renderTiles(); renderTrend(); renderNv(); renderGroups(); renderHeat();
+}
+
+function pctClass(p){ return p==null? '' : (p>=100?'ok':(p<80?'low':'')); }
+
+function renderTiles(){
+  const ms = rangeM(), ytdMs = D.months.filter(x=>x<=state.m);
+  $('tiles').innerHTML = T.map(t=>{
+    const th = totalM(t.k, ms), kh = kpiM(t.k, ms);
+    const thK = totalM(t.k, kpiMonthsOnly(t.k, ms));   // chỉ so với các tháng có giao KH
+    const p = kh ? thK/kh*100 : null;
+    const ytdTh = totalM(t.k, ytdMs), ytdKmMs = kpiMonthsOnly(t.k, ytdMs), ytdKh = kpiM(t.k, ytdMs);
+    const ytdThK = sumArr(D.nv.reduce((a,nv)=>a.map((v,i)=>v+nv[t.k][i]),Array(12).fill(0)), ytdKmMs);
+    const ytdP = ytdKh ? ytdThK/ytdKh*100 : null;
+    const w = p==null?0:Math.min(100,p);
+    return `<div class="card tile">
+      <div class="lab"><span class="dot" style="background:${t.color}"></span>${t.name}</div>
+      <div class="big">${fmt(th)} <small>/ ${kh==null?'không giao KH':fmt(kh)+' KH'}</small></div>
+      <div class="bar" role="img" aria-label="Hoàn thành ${fmtP(p)}"><i style="width:${w}%;background:${t.color}"></i></div>
+      <div class="meta"><span>Hoàn thành <span class="pct ${pctClass(p)}">${fmtP(p)}</span></span>
+        <span>${kh!=null && thK<kh ? 'Còn thiếu '+fmt(kh-thK) : (kh!=null?'Vượt '+fmt(thK-kh):'')}</span></div>
+      ${state.ytd && kh!=null && thK!==th ? `<div class="meta">% tính trên các tháng có giao KH (T${kpiMonthsOnly(t.k,ms).join(', T')}): TH ${fmt(thK)}</div>` : ''}
+      ${state.ytd ? '' : `<div class="ytd">Lũy kế T1–T${state.m}: <b style="color:var(--ink)">${fmt(ytdTh)}</b>${ytdKh!=null?(ytdKmMs.length<ytdMs.length
+        ? `<br>Các tháng có giao KH (T${ytdKmMs.join(', T')}): TH ${fmt(ytdThK)} / KH ${fmt(ytdKh)} · <span class="pct ${pctClass(ytdP)}">${fmtP(ytdP)}</span>`
+        : ` · KH ${fmt(ytdKh)} · <span class="pct ${pctClass(ytdP)}">${fmtP(ytdP)}</span>`):''}</div>`}
+    </div>`;
+  }).join('');
+}
+
+// ---------- biểu đồ xu hướng theo tháng (small multiples) ----------
+function renderTrend(){
+  const months = D.months;
+  $('trend').innerHTML = T.map(t=>`<div class="card"><h2>${t.name} theo tháng</h2>
+    <div class="legend"><span><span class="dot" style="background:${t.color}"></span>Thực hiện</span><span><span class="tick"></span>Kế hoạch</span></div>
+    <div class="chart" id="ch-${t.k}"></div></div>`).join('');
+  T.forEach(t=>{
+    const W=420,H=200,ml=40,mr=8,mt=14,mb=24, iw=W-ml-mr, ih=H-mt-mb;
+    const act = months.map(m=>D.nv.reduce((s,nv)=>s+nv[t.k][m-1],0));
+    const kh = months.map(m=>D.kpi[t.k][m-1]);
+    const maxV = Math.max(1,...act,...kh.filter(v=>v!=null));
+    const step = niceStep(maxV/4), top = Math.ceil(maxV/step)*step;
+    const y = v => mt + ih - v/top*ih;
+    const bw = iw/months.length, barW = Math.max(6,Math.min(28,bw*0.56));
+    let g = '';
+    for(let v=0; v<=top+1e-9; v+=step){
+      g += `<line x1="${ml}" x2="${W-mr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)" stroke-width="1"/>`+
+           `<text x="${ml-6}" y="${y(v)+4}" text-anchor="end" font-size="10.5" fill="var(--muted)">${fmt(v)}</text>`;
+    }
+    months.forEach((m,i)=>{
+      const cx = ml + bw*i + bw/2, sel = m===state.m || (state.ytd && m<=state.m);
+      const v = act[i], h = Math.max(0, ih - (y(v)-mt)), x = cx-barW/2;
+      const r = Math.min(4, h/2);
+      if (h>0) g += `<path d="M${x},${mt+ih} V${y(v)+r} q0,-${r} ${r},-${r} H${x+barW-r} q${r},0 ${r},${r} V${mt+ih} Z" fill="${t.color}" opacity="${sel?1:.35}"/>`;
+      if (kh[i]!=null) g += `<line x1="${cx-barW/2-4}" x2="${cx+barW/2+4}" y1="${y(kh[i])}" y2="${y(kh[i])}" stroke="var(--ink-2)" stroke-width="2" stroke-dasharray="3 2"/>`;
+      g += `<text x="${cx}" y="${H-6}" text-anchor="middle" font-size="10.5" fill="${m===state.m?'var(--ink)':'var(--muted)'}" font-weight="${m===state.m?700:400}">T${m}</text>`;
+      if (m===state.m) g += `<text x="${cx}" y="${Math.min(y(v), kh[i]!=null?y(kh[i]):1e9)-6}" text-anchor="middle" font-size="11" font-weight="650" fill="var(--ink)">${fmt(v)}</text>`;
+      g += `<rect class="hit" data-i="${i}" x="${ml+bw*i}" y="${mt}" width="${bw}" height="${ih+mb}" fill="transparent"/>`;
+    });
+    g += `<line x1="${ml}" x2="${W-mr}" y1="${mt+ih}" y2="${mt+ih}" stroke="var(--axis)"/>`;
+    const el = $('ch-'+t.k);
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${t.name} theo tháng">${g}</svg>`;
+    el.querySelectorAll('.hit').forEach(rc=>{
+      const i=+rc.dataset.i, m=months[i];
+      rc.style.cursor='pointer';
+      rc.onmousemove = e => showTip(e, `<b>T${m}/${D.nam}</b>Thực hiện: ${fmt(act[i])}<br>Kế hoạch: ${kh[i]==null?'không giao':fmt(kh[i])}${kh[i]?'<br>Hoàn thành: '+fmtP(act[i]/kh[i]*100):''}`);
+      rc.onmouseleave = hideTip;
+      rc.onclick = () => { state.m=m; $('selMonth').value=m; render(); };
+    });
+  });
+}
+function niceStep(raw){ const p=Math.pow(10,Math.floor(Math.log10(raw||1))); const n=raw/p; return (n<=1?1:n<=2?2:n<=5?5:10)*p; }
+function showTip(e, html){ const tp=$('tip'); tp.innerHTML=html; tp.style.opacity=1;
+  const x=e.pageX+14, y=e.pageY+14, w=tp.offsetWidth; tp.style.left=(x+w>window.scrollX+innerWidth-8? e.pageX-w-14 : x)+'px'; tp.style.top=y+'px'; }
+function hideTip(){ $('tip').style.opacity=0; }
+
+// ---------- bảng theo NV ----------
+function filteredNv(){
+  return D.nv.filter(n => isNv(n) && (state.loai==='Tất cả'||n.grp===state.loai) &&
+    (!state.q || (n.ma+' '+n.ten+' '+n.donvi).toLowerCase().includes(state.q)));
+}
+function renderNv(){
+  document.querySelectorAll('#chips .chip').forEach(b=>b.setAttribute('aria-pressed', b.dataset.l===state.loai));
+  const ms = rangeM();
+  let rows = filteredNv().map(n=>Object.assign({n}, rowVals(n,ms)));
+  if (state.hideZero) rows = rows.filter(r=>r.PTM+r.FIBER>0);
+  const vung = vungVals(ms), grand = vung.PTM || 1;
+  const s = state.sort, TXT = ['ma','ten','donvi','grp'];
+  rows.sort((a,b)=>{ const va = TXT.includes(s.k)? a.n[s.k] : a[s.k], vb = TXT.includes(s.k)? b.n[s.k] : b[s.k];
+    return (typeof va==='string'? va.localeCompare(vb,'vi') : va-vb) * s.dir; });
+  const maxP = Math.max(1,...rows.map(r=>r.PTM));
+  const cols = [['donvi','Đơn vị'],['ma','Mã NV'],['ten','Họ tên'],['grp','Nhóm'],['PTM','MBF+Saymee',1],['MBF','MobiFone',1],['C2C','TB C2C',1],['SME','Saymee',1],['FIBER','Fiber',1],['SHARE','Tỷ trọng TB PTM',1]];
+  const sum = rows.reduce((a,r)=>addV(a,r),{});
+  const all = state.loai==='Tất cả' && !state.q;
+  const other = otherVals(ms);
+  const foot = (lbl,v) => `<tr><td colspan="4">${lbl}</td>${KEYS.map(k=>`<td class="num">${fmt(v[k]||0)}</td>`).join('')}<td class="num">${fmtP((v.PTM||0)/grand*100)}</td></tr>`;
+  $('tblNv').innerHTML = `<thead><tr>${cols.map(c=>`<th class="${c[2]?'num':''}" data-k="${c[0]==='SHARE'?'PTM':c[0]}" ${(s.k===c[0])?`aria-sort="${s.dir>0?'ascending':'descending'}"`:''}>${c[1]}</th>`).join('')}</tr></thead>
+  <tbody>${rows.map(r=>`<tr title="${esc(r.n.tu?'Từ '+r.n.tu:'')}${r.n.den?' đến '+esc(r.n.den):''}">
+    <td>${esc(r.n.donvi)}</td><td>${esc(r.n.ma)}</td><td>${esc(r.n.ten)}${r.n.den?' <span class="tag">nghỉ '+esc(r.n.den)+'</span>':''}</td><td><span class="tag">${esc(r.n.grp)}</span></td>
+    ${KEYS.map(k=>`<td class="num ${r[k]?'':'zero'}" ${k==='PTM'?'style="font-weight:600"':''}>${fmt(r[k])}</td>`).join('')}
+    <td class="num"><span class="share" style="width:${Math.round(r.PTM/maxP*60)}px"></span>${fmtP(r.PTM/grand*100)}</td></tr>`).join('') || `<tr><td colspan="10" class="muted">Không có dữ liệu</td></tr>`}</tbody>
+  <tfoot>${foot(`Cộng nhân viên (${rows.length} người)`, sum)}${all ? foot('Khác (ĐL, Điểm bán…)', other) + foot('Vùng 4', vung) : ''}</tfoot>`;
+  $('tblNv').querySelectorAll('th').forEach(th=>th.onclick=()=>{ const k=th.dataset.k; state.sort = {k, dir: state.sort.k===k? -state.sort.dir : (TXT.includes(k)?1:-1)}; renderNv(); });
+}
+
+function renderGroups(){
+  const ms = rangeM(), g = {};
+  NVG.forEach(k=>{ if (D.nv.some(n=>n.grp===k)) g[k] = {cnt:0}; });
+  D.nv.filter(isNv).forEach(n=>{ const v=rowVals(n,ms); addV(g[n.grp],v); if (v.PTM+v.FIBER>0) g[n.grp].cnt++; });
+  g['Khác'] = Object.assign({cnt: D.nv.filter(n=>n.grp==='Khác' && BASE.some(b=>sumArr(n[b],ms)>0)).length}, otherVals(ms));
+  const keys = Object.keys(g);
+  const GC = [['PTM','MBF+Saymee'],['MBF','MobiFone'],['C2C','TB C2C'],['SME','Saymee'],['FIBER','Fiber']];
+  const vung = vungVals(ms);
+  $('tblGrp').innerHTML = `<thead><tr><th>Nhóm</th><th class="num">Mã có TB</th>${GC.map(c=>`<th class="num">${c[1]}</th>`).join('')}</tr></thead>
+    <tbody>${keys.map(k=>`<tr><td>${esc(k==='Khác'?'Khác (ĐL, Điểm bán…)':k)}</td><td class="num">${g[k].cnt}</td>${GC.map(c=>`<td class="num ${g[k][c[0]]?'':'zero'}">${fmt(g[k][c[0]]||0)}</td>`).join('')}</tr>`).join('')}</tbody>
+    <tfoot><tr><td>Vùng 4</td><td class="num">${keys.reduce((s,k)=>s+g[k].cnt,0)}</td>${GC.map(c=>`<td class="num">${fmt(vung[c[0]])}</td>`).join('')}</tr></tfoot>`;
+  // TB bị loại do ngoài thời gian công tác
+  const TB = T.filter(t=>BASE.includes(t.k));
+  const ex = D.nv.map(n=>({n, v:TB.map(t=>sumArr(n['x'+t.k],ms))})).filter(o=>o.v.some(x=>x>0)).sort((a,b)=>b.v[0]+b.v[1]+b.v[2]-a.v[0]-a.v[1]-a.v[2]);
+  $('excl').innerHTML = ex.length ? `<b>Không tính do ngoài thời gian công tác</b> (theo cột Thời gian tới/đi):
+    <ul>${ex.map(o=>`<li>${esc(o.n.ma)} – ${esc(o.n.ten||'')}: ${TB.map((t,i)=>o.v[i]?`${t.short} ${fmt(o.v[i])}`:'').filter(Boolean).join(', ')}</li>`).join('')}</ul>`
+    : '<span class="muted">Không có TB nào bị loại do ngoài thời gian công tác.</span>';
+}
+
+function renderHeat(){
+  document.querySelectorAll('#segMetric button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.k===state.metric));
+  const k = state.metric, months = D.months;
+  // MobiFone = mã của NV (không gồm C2C); MBF+Saymee = MobiFone + C2C + Saymee (như bảng Theo nhân viên)
+  let rows = filteredNv().map(n=>({n, v:months.map(m=>rowVals(n,[m])[k])}));
+  rows.forEach(r=>r.sum=r.v.reduce((a,b)=>a+b,0));
+  if (state.hideZero) rows = rows.filter(r=>r.sum>0);
+  rows.sort((a,b)=>b.sum-a.sum);
+  const max = Math.max(1,...rows.flatMap(r=>r.v));
+  const cell = v => { const a = v? (0.12 + 0.88*v/max) : 0; return `<td class="num ${v?'':'zero'}" style="${v?`background:color-mix(in srgb, var(--seq-1) ${Math.round(a*100)}%, var(--surface));${a>.55?'color:#fff;':''}`:''}">${fmt(v)}</td>`; };
+  const colTot = months.map((m,i)=>rows.reduce((s,r)=>s+r.v[i],0));
+  const vung = months.map(m=>totalM(k,[m]));   // toàn vùng (MobiFone gồm cả C2C) để so với KH
+  const all = state.loai==='Tất cả' && !state.q;
+  const line = (lbl,arr) => `<tr><td colspan="2">${lbl}</td>${arr.map(v=>`<td class="num">${fmt(v)}</td>`).join('')}<td class="num">${fmt(arr.reduce((a,b)=>a+b,0))}</td></tr>`;
+  $('tblHeat').innerHTML = `<thead><tr><th>Mã NV</th><th>Họ tên</th>${months.map(m=>`<th class="num" style="${m===state.m?'color:var(--ink)':''}">T${m}</th>`).join('')}<th class="num">Cộng</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td>${esc(r.n.ma)}</td><td>${esc(r.n.ten)}</td>${r.v.map(cell).join('')}<td class="num"><b>${fmt(r.sum)}</b></td></tr>`).join('')}</tbody>
+    <tfoot>${line('Cộng nhân viên', colTot)}${all ? line(k==='MBF'?'TB C2C + Khác (ĐL, Điểm bán…)':'Khác (ĐL, Điểm bán…)', months.map((m,i)=>vung[i]-colTot[i])) : ''}
+    ${line('Vùng 4', vung)}
+    <tr><td colspan="2">Kế hoạch</td>${months.map(m=>`<td class="num">${fmt(D.kpi[k][m-1])}</td>`).join('')}<td></td></tr>
+    <tr><td colspan="2">% hoàn thành (Vùng 4)</td>${months.map((m,i)=>{const kh=D.kpi[k][m-1];const p=kh?vung[i]/kh*100:null;return `<td class="num"><span class="pct ${pctClass(p)}">${fmtP(p)}</span></td>`}).join('')}<td></td></tr></tfoot>`;
+}
+
+function renderRules(){
+  $('rules').innerHTML = `<h2>Quy tắc tính & nguồn dữ liệu</h2>
+  <ul>
+    <li><b>TB PTM (MobiFone + Saymee)</b> = TB PTM MobiFone + TB PTM Saymee; kế hoạch = KH TB PTM MBF + KH TB PTM THGT. Fiber khác loại nên không cộng chung với TB PTM.</li>
+    <li><b>Theo nhân viên</b>: chỉ hiển thị GDV, NVBH, AM, Fiber. Mã C2C (vd &lt;mã NV&gt;_C2C) không tính là nhân viên mà gộp vào cột <b>TB C2C</b> của NV chủ quản; MBF+Saymee của NV = MobiFone + TB C2C + Saymee. ĐL, Điểm bán và mã khác gộp vào dòng <b>Khác</b>.</li>
+    <li><b>MobiFone / Saymee</b>: file NEW_ACTIVE_*, chỉ dòng có Lý do HM ∈ {MS, DNTD, RESET, MNP}. Saymee (THGT) = Loại thuê bao SME hoặc MEE; MobiFone = phần còn lại. Mốc tháng = Ngày kích hoạt. Gán NV theo cột "Nhân viên PT".</li>
+    <li><b>Fiber</b>: file báo cáo TB PTM Fiber; mốc = NGÀY ĐẤU NỐI, gán theo MÃ NHÂN VIÊN. Tính HĐ "Đang hoạt động"; HĐ "Đã hủy" chỉ tính khi chặn cắt là 1C KHYC hoặc 1C Nợ cước (kể cả "1C KHYC + 1C Nợ cước"); "Chặn 1 chiều KHYC" không tính. Không tính "Chờ thi công".</li>
+    <li><b>Danh sách NV DN4</b>: chỉ tính mã có trong danh sách và TB phát sinh trong khoảng Thời gian tới – Thời gian đi của mã đó (trống = không giới hạn).</li>
+    <li><b>% hoàn thành</b> = thực hiện toàn Vùng 4 / chỉ tiêu tháng trong KPI_Vung4_${D.nam}. Lũy kế chỉ cộng KH các tháng có giao.</li>
+  </ul>
+  <div style="margin-top:8px"><b>File nguồn:</b> ${D.nguon.map(esc).join(' · ')}</div>`;
+}
+init();
+</script>
+</body>
+</html>

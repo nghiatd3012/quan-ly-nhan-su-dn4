@@ -1,0 +1,122 @@
+*{box-sizing:border-box}
+html,body{margin:0;background:#f4f6fa;color:#1d2533;font:15px/1.45 "Segoe UI",Roboto,Arial,sans-serif;overflow-wrap:anywhere}
+[hidden]{display:none!important}
+button{font:inherit;cursor:pointer}
+
+.man{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+.hop{width:100%;max-width:380px;background:#fff;border-radius:16px;padding:24px 20px;box-shadow:0 2px 10px #0001}
+.hop h1{font-size:20px;text-align:center;margin:0}
+.logo{width:64px;height:64px;border-radius:18px;background:#0b4ea2;color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 10px}
+.giua{text-align:center}
+.hint{font-size:12.5px;color:#778;margin:4px 0 14px}
+label{font-size:13px;color:#556;display:block;margin:12px 0 4px}
+input,select{width:100%;padding:11px 12px;border:1px solid #cfd6e2;border-radius:9px;font:inherit;background:#fff;color:inherit}
+input:focus,select:focus{outline:2px solid #0b4ea2;outline-offset:0;border-color:#0b4ea2}
+.loi{color:#c62828;font-size:13px;margin-top:10px;min-height:1em}
+.thanh-cong{color:#1b7a2c;font-size:13px}
+
+.btn{display:inline-block;border:0;background:#0b4ea2;color:#fff;border-radius:9px;padding:9px 14px;font-weight:600;font-size:14px}
+.btn.khoi{display:block;width:100%;margin-top:14px;padding:12px}
+.btn.g{background:#eef2f8;color:#0b4ea2}
+.btn:disabled{opacity:.55;cursor:default}
+
+.top{background:#0b4ea2;color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.top .ai{min-width:0}
+.top b{display:block;font-size:16px}
+.top small{opacity:.85;font-size:12.5px}
+.lenh{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0}
+.lk{background:none;border:0;color:#fff;opacity:.9;font-size:12.5px;padding:2px 0;text-decoration:underline}
+
+.tabs{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;background:#fff;border-bottom:1px solid #e2e6ee;position:sticky;top:0;z-index:2}
+.tab{border:0;padding:7px 12px;border-radius:999px;background:#eef2f8;color:#334;white-space:nowrap;font-size:13.5px}
+.tab.on{background:#0b4ea2;color:#fff}
+.tab .n{background:#e53935;color:#fff;border-radius:9px;padding:0 6px;margin-left:4px;font-size:11px}
+
+.body{padding:12px;display:flex;flex-direction:column;gap:12px;max-width:1100px;margin:0 auto}
+.card{background:#fff;border-radius:14px;padding:14px;box-shadow:0 1px 3px #0001}
+.card h3{margin:0 0 10px;font-size:15px}
+
+.ok{color:#1b7a2c;font-weight:700}.mid{color:#a46a00;font-weight:700}.low{color:#c62828;font-weight:700}
+
+.dang-tai{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#1d2533;color:#fff;border-radius:999px;padding:7px 16px;font-size:13px;z-index:9;box-shadow:0 2px 8px #0003}
+
+.card h3{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px dashed #e7eaf0}
+.row:last-child{border:0}
+.row>span{color:#667;flex-shrink:0}
+.row>b{font-weight:600;text-align:right;min-width:0}
+.row.sua{flex-direction:column;gap:4px}
+.row.sua>b{text-align:left;font-weight:400}
+.trong{color:#99a;font-weight:400}
+.lock{color:#99a;font-size:12px;font-weight:400}
+.pend{display:block;font-size:12.5px;color:#a15c00;background:#fff4e0;border-radius:6px;padding:2px 6px;margin-top:3px;font-weight:500}
+.rej{display:block;font-size:12.5px;color:#b71c1c;background:#fdeaea;border-radius:6px;padding:2px 6px;margin-top:3px;font-weight:500}
+.old{text-decoration:line-through;color:#999;font-weight:400}
+.btn.xanh{background:#2e7d32}
+.btn.do{background:#fff;color:#c62828;border:1px solid #e0b4b4}
+.btn.nho{padding:6px 12px;font-size:13px}
+.nhom-nut{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.req{border:1px solid #e6e9ef;border-radius:10px;padding:10px;margin-bottom:10px}
+.req:last-child{margin-bottom:0}
+.req .row>b{font-weight:500}
+.tu-choi{margin-top:8px}
+.the{display:flex;flex-direction:column;gap:12px}
+.loi-the{color:#c62828}
+
+.cuon{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px}
+table.kpi{width:100%;border-collapse:collapse;font-size:12.5px;min-width:520px}
+table.ca-nhan-bang{min-width:0}
+table.kpi th,table.kpi td{padding:6px 5px;text-align:right;border-bottom:1px solid #edf0f5;vertical-align:middle;position:relative}
+table.kpi th{color:#667;font-weight:600;font-size:11.5px;white-space:nowrap}
+table.kpi td:first-child,table.kpi th:first-child{text-align:left}
+table.kpi td.ten b{display:block;font-weight:600;white-space:nowrap}
+table.kpi td.ten small{color:#889;font-size:11px;white-space:nowrap}
+table.kpi td small.so{display:block;color:#889;font-weight:400;font-size:10.5px}
+table.ca-nhan-bang td small.so{display:none}
+table.ca-nhan-bang td.mo small.so{display:block}
+table.ca-nhan-bang td{cursor:pointer}
+table.ca-nhan-bang td:first-child{cursor:default;white-space:nowrap}
+table.kpi tr.grp td{background:#eef3fb;font-weight:700;color:#0b4ea2;text-align:left}
+table.kpi tr.tot td{background:#f6f8fb;font-weight:700}
+table.kpi .trong{color:#b8c0cc}
+.adj{background:#efe3fb;color:#6a1b9a;border-radius:5px;padding:0 4px;font-size:10.5px;margin-left:2px;font-weight:700}
+.loc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:8px}
+.loc select,#kpi-toi-chon,#kpi-tong-thang{padding:7px 8px;font-size:13px}
+#kpi-toi-chon{margin-bottom:8px}
+#kpi-tong-thang{width:auto}
+.ghi-chu{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:#4a3478}
+.canh-bao{margin-top:12px;background:#fff8e6;border-radius:10px;padding:8px 12px;font-size:12.5px;color:#6b4a00}
+.canh-bao ul{margin:4px 0 0;padding-left:18px}
+iframe.dash{width:100%;min-height:420px;border:0;border-radius:10px;background:#f9f9f7;display:block;margin-top:8px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.kpis .k{background:#f4f7fc;border-radius:10px;padding:8px 10px;min-width:0}
+.kpis .k>span{font-size:11.5px;color:#667;display:block}
+.kpis .k b{font-size:17px}.kpis .k small{color:#778;font-size:12px}.kpis .k em{font-style:normal;font-weight:700;font-size:13px}
+.bar{height:6px;background:#e5e9f0;border-radius:4px;margin-top:5px;overflow:hidden}.bar i{display:block;height:100%;background:#0b4ea2}
+#kpi-tong-chi-tiet{margin-top:10px}
+#kpi-tong-chi-tiet summary{cursor:pointer;color:#0b4ea2;font-weight:600;font-size:14px;padding:6px 0}
+
+.an-file{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.drop{display:block;border:2px dashed #9fb4d6;border-radius:12px;padding:18px;text-align:center;color:#4a6ea8;background:#f5f8fd;cursor:pointer;margin:0;font-size:15px}
+.drop small{color:#6a7fa3;font-size:12px}
+.drop.over{background:#e6effc}
+.log{padding-left:18px;margin:8px 0 0;font-size:12.5px}
+.log li{margin:4px 0}
+.log li.l-ok::marker{content:'✅ '}.log li.l-warn::marker{content:'⚠️ '}.log li.l-err::marker{content:'❌ '}
+.log li.l-err{color:#c62828}
+.chip{display:inline-block;font-size:11.5px;padding:3px 8px;border-radius:999px;background:#e8f5e9;color:#2e7d32;margin:2px}
+.chip.off{background:#f1f1f1;color:#888}
+table.du-lieu{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px;min-width:420px}
+table.du-lieu th,table.du-lieu td{padding:6px 5px;text-align:left;border-bottom:1px solid #edf0f5;vertical-align:top}
+table.du-lieu th{color:#667;font-size:11.5px;font-weight:600}
+table.du-lieu td.wrap{word-break:break-all;max-width:180px}
+.nho-xam{display:block;color:#889;font-size:11px}
+.lk-do{background:none;border:0;color:#c62828;text-decoration:underline;padding:0;font-size:12.5px}
+.luoi-f{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0 10px;margin-top:6px}
+.luoi-f label{margin:10px 0 4px}
+.ket-qua{margin-top:12px;border-radius:10px;padding:8px 12px;font-size:13px}
+.ket-qua p{margin:4px 0}
+.ket-qua ul{margin:4px 0;padding-left:18px;font-size:12.5px}
+.ket-qua.kq-ok{background:#e8f5e9;color:#1b5e20}
+.ket-qua.kq-loi{background:#fdeaea;color:#b71c1c}
+label.btn{cursor:pointer;margin:0}

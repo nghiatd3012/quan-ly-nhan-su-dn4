@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quản lý nhân sự Vùng 4</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<section id="man-dang-nhap" class="man" hidden>
+  <form id="dn-form" class="hop" autocomplete="on" hidden>
+    <div class="logo" aria-hidden="true">👥</div>
+    <h1>Quản lý nhân sự Vùng 4</h1>
+    <p class="hint giua">Tổ Kinh doanh viễn thông Đà Nẵng 4</p>
+    <label for="dn-ma">Mã nhân viên</label>
+    <input id="dn-ma" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" required>
+    <label for="dn-mk">Mật khẩu</label>
+    <input id="dn-mk" name="password" type="password" autocomplete="current-password" required>
+    <div id="dn-loi" class="loi" role="alert"></div>
+    <button id="dn-nut" type="submit" class="btn khoi">Đăng nhập</button>
+  </form>
+
+  <form id="dmk-form" class="hop" hidden>
+    <div class="logo" aria-hidden="true">🔑</div>
+    <h1>Đổi mật khẩu</h1>
+    <p id="dmk-ghichu" class="hint giua"></p>
+    <label for="dmk-cu">Mật khẩu hiện tại</label>
+    <input id="dmk-cu" type="password" autocomplete="current-password" required>
+    <label for="dmk-moi">Mật khẩu mới (ít nhất 6 ký tự)</label>
+    <input id="dmk-moi" type="password" autocomplete="new-password" minlength="6" required>
+    <label for="dmk-lai">Nhập lại mật khẩu mới</label>
+    <input id="dmk-lai" type="password" autocomplete="new-password" minlength="6" required>
+    <div id="dmk-loi" class="loi" role="alert"></div>
+    <button id="dmk-nut" type="submit" class="btn khoi">Đổi mật khẩu</button>
+    <button id="dmk-huy" type="button" class="btn g khoi" hidden>Quay lại</button>
+  </form>
+</section>
+
+<section id="khung" hidden>
+  <header class="top">
+    <div class="ai"><b id="nd-ten"></b><small id="nd-phu"></small></div>
+    <div class="lenh">
+      <button id="nut-doi-mk" type="button" class="lk">Đổi mật khẩu</button>
+      <button id="nut-dang-xuat" type="button" class="lk">Đăng xuất</button>
+    </div>
+  </header>
+  <nav id="the-ds" class="tabs" role="tablist"></nav>
+  <main id="the-nd" class="body"></main>
+</section>
+
+<div id="dang-tai" class="dang-tai" hidden>Đang tải…</div>
+
+<script src="js/config.js"></script>
+<script src="js/core.js"></script>
+<script src="js/kpi_image.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<!-- các file thẻ đặt ở đây, trước App.batDau() -->
+<script src="js/tab-hoso.js"></script>
+<script src="js/tab-duyet.js"></script>
+<script src="js/tab-kpi.js"></script>
+<script src="js/tab-nap.js"></script>
+<script>App.batDau();</script>
+</body>
+</html>
