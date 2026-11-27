@@ -314,6 +314,8 @@ function niceStep(raw){ const p=Math.pow(10,Math.floor(Math.log10(raw||1))); con
 function showTip(e, html){ const tp=$('tip'); tp.innerHTML=html; tp.style.opacity=1;
   const x=e.pageX+14, y=e.pageY+14, w=tp.offsetWidth; tp.style.left=(x+w>window.scrollX+innerWidth-8? e.pageX-w-14 : x)+'px'; tp.style.top=y+'px'; }
 function hideTip(){ $('tip').style.opacity=0; }
+// Đơn vị hiện gọn: "Hội An", không "Cửa hàng MobiFone / TP / H. Hội An" (giống KPI NV, 27/11/2026)
+const dvNgan = s => String(s||'').replace(/Ð/g,'Đ').replace(/^Cửa hàng (MobiFone )?/i,'').replace(/^CH\s+/,'').replace(/^Trung tâm giao dịch (Huyện |Thị xã |TP |Thành phố )?/i,'').replace(/^TTGD\s+/,'').replace(/^H\.\s*/,'').replace(/^TX\.?\s+/,'').replace(/^TP\.?\s+/,'').trim();
 
 // ---------- bảng theo NV ----------
 function filteredNv(){
@@ -327,7 +329,7 @@ function renderNv(){
   if (state.hideZero) rows = rows.filter(r=>r.PTM+r.FIBER>0);
   const vung = vungVals(ms), grand = vung.PTM || 1;
   const s = state.sort, TXT = ['ma','ten','donvi','grp'];
-  rows.sort((a,b)=>{ const va = TXT.includes(s.k)? a.n[s.k] : a[s.k], vb = TXT.includes(s.k)? b.n[s.k] : b[s.k];
+  rows.sort((a,b)=>{ const tx = n => s.k==='donvi'? dvNgan(n.donvi) : n[s.k]; const va = TXT.includes(s.k)? tx(a.n) : a[s.k], vb = TXT.includes(s.k)? tx(b.n) : b[s.k];
     return (typeof va==='string'? va.localeCompare(vb,'vi') : va-vb) * s.dir; });
   const maxP = Math.max(1,...rows.map(r=>r.PTM));
   const cols = [['donvi','Đơn vị'],['ma','Mã NV'],['ten','Họ tên'],['grp','Nhóm'],['PTM','MBF+Saymee',1],['MBF','MobiFone',1],['C2C','TB C2C',1],['SME','Saymee',1],['FIBER','Fiber',1],['WIFI','Wifi 5G (FWD)',1],['SHARE','Tỷ trọng TB PTM',1]];
@@ -337,7 +339,7 @@ function renderNv(){
   const foot = (lbl,v) => `<tr><td colspan="4">${lbl}</td>${SHOWK.map(k=>`<td class="num">${cellTxt(k,v)}</td>`).join('')}<td class="num">${fmtP((v.PTM||0)/grand*100)}</td></tr>`;
   $('tblNv').innerHTML = `<thead><tr>${cols.map(c=>`<th class="${c[2]?'num':''}" data-k="${c[0]==='SHARE'?'PTM':c[0]}" ${(s.k===c[0])?`aria-sort="${s.dir>0?'ascending':'descending'}"`:''}>${c[1]}</th>`).join('')}</tr></thead>
   <tbody>${rows.map(r=>`<tr title="${esc(r.n.tu?'Từ '+r.n.tu:'')}${r.n.den?' đến '+esc(r.n.den):''}">
-    <td>${esc(r.n.donvi)}</td><td>${esc(r.n.ma)}</td><td>${esc(r.n.ten)}${r.n.den?' <span class="tag">nghỉ '+esc(r.n.den)+'</span>':''}</td><td><span class="tag">${esc(r.n.grp)}</span></td>
+    <td>${esc(dvNgan(r.n.donvi))}</td><td>${esc(r.n.ma)}</td><td>${esc(r.n.ten)}${r.n.den?' <span class="tag">nghỉ '+esc(r.n.den)+'</span>':''}</td><td><span class="tag">${esc(r.n.grp)}</span></td>
     ${SHOWK.map(k=>`<td class="num ${cellZero(k,r)?'zero':''}" ${k==='PTM'?'style="font-weight:600"':''}>${cellTxt(k,r)}</td>`).join('')}
     <td class="num"><span class="share" style="width:${Math.round(r.PTM/maxP*60)}px"></span>${fmtP(r.PTM/grand*100)}</td></tr>`).join('') || `<tr><td colspan="11" class="muted">Không có dữ liệu</td></tr>`}</tbody>
   <tfoot>${foot(`Cộng nhân viên (${rows.length} người)`, sum)}${all ? foot('Khác (ĐL, Điểm bán…)', other) + foot('Vùng 4', vung) : ''}</tfoot>`;
