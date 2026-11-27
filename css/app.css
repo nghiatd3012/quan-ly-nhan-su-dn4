@@ -148,3 +148,14 @@ label.btn{cursor:pointer;margin:0}
   .hs-chon-the>label{margin:0;white-space:nowrap}
   .hs-chon-the>select{max-width:420px}
 }
+/* Xuất Excel báo cáo thực hiện (27/11/2026) */
+.xuat-nhom{border:1px solid #dbe1ea;border-radius:10px;padding:8px 10px 10px;margin:0 0 10px}
+.xuat-nhom legend{font-weight:600;font-size:13px;padding:0 4px;color:#33404f}
+.lk{border:0;background:none;color:#0b4ea2;font-size:12px;font-weight:600;padding:0;text-decoration:underline}
+.ds-chon{display:flex;flex-wrap:wrap;gap:6px}
+.o-chon{display:inline-flex;align-items:center;gap:5px;margin:0;padding:5px 10px;border:1px solid #dbe1ea;border-radius:999px;font-size:13px;background:#fff;cursor:pointer}
+.o-chon:has(input:checked){background:#e3eefc;border-color:#9dbbe6;color:#0b4ea2}
+.o-chon input{margin:0;width:auto;flex:none}
+.o-chon{white-space:nowrap;width:auto}
+.hs-chon-the>#hs-tai-excel{margin-left:auto;white-space:nowrap}
+@media (max-width:640px){.hs-chon-the>#hs-tai-excel{display:block;width:100%;margin-top:8px}}

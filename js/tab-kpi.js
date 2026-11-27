@@ -100,7 +100,8 @@
     var bang = el('div', { class: 'card', id: 'kpi-bang' }, [el('h3', { text: 'KPI nhân viên' })]);
     var toi = el('div', { class: 'card', id: 'kpi-toi' }, [el('h3', { text: 'KPI của tôi' })]);
     var tong = laQL() ? el('div', { class: 'card', id: 'kpi-tong' }, [el('h3', { text: 'Báo cáo tổng Vùng 4' })]) : null;
-    var ds = laQL() ? [['tong', 'Báo cáo tổng', tong], ['nv', 'KPI nhân viên', bang], ['toi', 'KPI của tôi', toi]]
+    var xuat = laQL() ? el('div', { class: 'card', id: 'kpi-xuat' }, [el('h3', { text: 'Xuất báo cáo thực hiện' })]) : null;
+    var ds = laQL() ? [['tong', 'Báo cáo tổng', tong], ['nv', 'KPI nhân viên', bang], ['toi', 'KPI của tôi', toi], ['xuat', 'Xuất Excel', xuat]]
       : [['nv', 'KPI nhân viên', bang], ['toi', 'KPI của tôi', toi]];   // NV vào thẳng KPI nhân viên chung (26/11/2026)
     if (!ds.some(function (x) { return x[0] === nho.tab; })) nho.tab = ds[0][0];
     var thanh = el('nav', { class: 'tab-con', role: 'tablist', 'aria-label': 'Báo cáo KPI' });
@@ -121,6 +122,149 @@
     if (tong) taiTong(tong);
     taiBang(bang, toi);
     taiCaNhan(toi);
+    if (xuat) taiXuat(xuat);
+  }
+
+  // ===== Xuất Excel báo cáo thực hiện nhiều tháng (QL/QT; người dùng chốt 27/11/2026) =====
+  // Một sheet: mỗi NV 1 dòng; mỗi chỉ tiêu có cột TH từng tháng đã chọn + Cộng; cuối là % BQ từng tháng.
+  function mlHoacNull() {
+    var web = null;
+    try { web = localStorage.getItem('qlns-cong-bo-web'); } catch (e) { }
+    return mucLuc().then(function (ml) { return web && !(ml.capNhat > web) ? null : ml; }, function () { return null; });
+  }
+  function layThang(t, ml) {
+    function quaApi() { return Api.goi('kpi.thang', { thang: t }, true).then(function (kq) { if (!kq.ok || !kq.R || kq.thang !== t) throw new Error(kq.thongBao || 'Không tải được KPI ' + nhanThang(t)); return kq.R; }); }
+    if (!ml || (ml.kpi || []).indexOf(t) < 0) return quaApi();
+    return docTep('kpi-' + t + '.json', ml.capNhat).catch(quaApi);
+  }
+  function tenCv(g) { return g === 'FIBER' ? 'Fiber' : g; }
+
+  function taiXuat(the) {
+    var ml = null;
+    UI.dangTai(true);
+    mlHoacNull().then(function (m) {
+      ml = m;
+      if (ml) return { dsThang: (ml.kpi || []).slice().sort() };
+      return Api.goi('kpi.thang', {}, true).then(function (kq) { if (!kq.ok) throw new Error(kq.thongBao || 'Không tải được danh sách tháng'); return { dsThang: kq.dsThang || [] }; });
+    }).then(function (x) {
+      var dsThang = x.dsThang;
+      if (!dsThang.length) throw new Error('Chưa có số liệu KPI.');
+      return layThang(dsThang[dsThang.length - 1], ml).then(function (R) { UI.dangTai(false); veXuat(the, dsThang, R, ml); });
+    }).catch(function (e) { UI.dangTai(false); if (App.conHieuLuc()) the.appendChild(el('p', { class: 'loi-the', text: e.message || String(e) })); });
+  }
+
+  function oDanhDau(ten, giaTri, nhan, chon) {
+    var o = el('input', { type: 'checkbox', name: ten, value: giaTri });
+    o.checked = !!chon;
+    return el('label', { class: 'o-chon' }, [o, nhan]);
+  }
+  function giaTriChon(hop) { return Array.prototype.filter.call(hop.querySelectorAll('input'), function (o) { return o.checked; }).map(function (o) { return o.value; }); }
+  function nhomChon(tieuDe, ten, ds, chonMacDinh) {
+    var hop = el('div', { class: 'ds-chon' }, ds.map(function (x) { return oDanhDau(ten, x[0], x[1], chonMacDinh(x[0])); }));
+    function dat(b) { Array.prototype.forEach.call(hop.querySelectorAll('input'), function (o) { o.checked = b; }); }
+    return { hop: hop, khoi: el('fieldset', { class: 'xuat-nhom' }, [
+      el('legend', null, [tieuDe + ' ',
+        el('button', { type: 'button', class: 'lk', text: 'Tất cả', onclick: function () { dat(true); } }), ' · ',
+        el('button', { type: 'button', class: 'lk', text: 'Bỏ chọn', onclick: function () { dat(false); } })]),
+      hop]) };
+  }
+
+  function veXuat(the, dsThang, Rmoi, ml) {
+    var cvs = [], nlvs = [];
+    (Rmoi.groups || []).forEach(function (g) { (g.rows || []).forEach(function (r) {
+      if (cvs.indexOf(r.g) < 0) cvs.push(r.g); if (r.donvi && nlvs.indexOf(r.donvi) < 0) nlvs.push(r.donvi); }); });
+    nlvs.sort(function (a, b) { return a.localeCompare(b, 'vi'); });
+    var ba = dsThang.slice(-3);
+    var nThang = nhomChon('Tháng', 'xt-thang', dsThang.map(function (t) { return [t, nhanThang(t)]; }), function (t) { return ba.indexOf(t) >= 0; });
+    var nCv = nhomChon('Chức vụ', 'xt-cv', cvs.map(function (g) { return [g, tenCv(g)]; }), function () { return true; });
+    var nNlv = nhomChon('Nơi làm việc', 'xt-nlv', nlvs.map(function (d) { return [d, d]; }), function () { return true; });
+    var nut = el('button', { type: 'button', id: 'kpi-xuat-tai', class: 'btn', text: '⬇ Tải file Excel' });
+    var tb = el('p', { class: 'hint', id: 'kpi-xuat-tb' });
+    nut.addEventListener('click', function () {
+      var thang = giaTriChon(nThang.hop).sort(), cv = giaTriChon(nCv.hop), nlv = giaTriChon(nNlv.hop);
+      if (!thang.length || !cv.length || !nlv.length) { window.alert('Hãy chọn ít nhất 1 tháng, 1 chức vụ và 1 nơi làm việc.'); return; }
+      nut.disabled = true; tb.textContent = 'Đang tải số liệu ' + thang.length + ' tháng…';
+      UI.dangTai(true);
+      Promise.all(thang.map(function (t) { return layThang(t, ml); })).then(function (dsR) {
+        var sheet = bangXuat(thang, dsR, cv, nlv, cv.length === cvs.length && nlv.length === nlvs.length);
+        if (!sheet) throw new Error('Không có nhân viên nào khớp bộ lọc.');
+        tb.textContent = 'Đã tạo file: ' + sheet.soNv + ' nhân viên × ' + thang.length + ' tháng.';
+        return UI.xuatExcel('KPI_ThucHien_DN4_' + thang[0].replace('-', '') + (thang.length > 1 ? '-' + thang[thang.length - 1].replace('-', '') : '') + '.xlsx', [sheet]);
+      }).catch(function (e) { tb.textContent = ''; window.alert(e.message || String(e)); })
+        .then(function () { UI.dangTai(false); nut.disabled = false; });
+    });
+    the.appendChild(el('p', { class: 'hint', text: 'Chọn tháng, chức vụ, nơi làm việc rồi bấm tải. File có mỗi nhân viên 1 dòng; mỗi chỉ tiêu gồm số thực hiện từng tháng và cột Cộng; cuối là % BQ từng tháng.' }));
+    [nThang.khoi, nCv.khoi, nNlv.khoi].forEach(function (k) { the.appendChild(k); });
+    the.appendChild(el('div', { class: 'nhom-nut' }, [nut]));
+    the.appendChild(tb);
+  }
+
+  // Trả {ten, dong, doRong, gop, soNv} cho UI.xuatExcel, hoặc null nếu không có NV nào.
+  function bangXuat(thang, dsR, cv, nlv, tatCa) {
+    var ks = [];
+    dsR.forEach(function (R) { maCot(R).forEach(function (k) { if (ks.indexOf(k) < 0) ks.push(k); }); });
+    var cot = cotTheo(ks);
+    var nv = {}, thuTu = [], thuTuNhom = [];
+    dsR.forEach(function (R, i) {
+      (R.groups || []).forEach(function (g) {
+        if (thuTuNhom.indexOf(g.g) < 0) thuTuNhom.push(g.g);
+        (g.rows || []).forEach(function (r) {
+          var ma = String(r.ma).toUpperCase();
+          if (!nv[ma]) { nv[ma] = { ma: r.ma, thang: {} }; thuTu.push(ma); }
+          nv[ma].ten = r.ten; nv[ma].donvi = r.donvi; nv[ma].g = r.g;   // tháng sau cùng ghi đè: thông tin mới nhất
+          nv[ma].thang[i] = r;
+        });
+      });
+    });
+    var ds = thuTu.map(function (m) { return nv[m]; }).filter(function (n) { return cv.indexOf(n.g) >= 0 && nlv.indexOf(n.donvi) >= 0; });
+    if (!ds.length) return null;
+    // Thứ tự nhóm mới nhất trước (NVBH, GDV, AM, Fiber như bảng KPI)
+    var nhomMoi = []; (dsR[dsR.length - 1].groups || []).forEach(function (g) { nhomMoi.push(g.g); });
+    thuTuNhom.forEach(function (g) { if (nhomMoi.indexOf(g) < 0) nhomMoi.push(g); });
+    ds.sort(function (a, b) { return nhomMoi.indexOf(a.g) - nhomMoi.indexOf(b.g); });
+
+    var nT = thang.length, coCong = nT > 1, nhan = thang.map(nhanThang);
+    var dau = ['STT', 'Mã NV', 'Họ tên', 'Chức vụ', 'Nơi làm việc'], n0 = dau.length;
+    var h1 = dau.slice(), h2 = dau.map(function () { return ''; }), gop = [];
+    dau.forEach(function (x, c) { gop.push({ s: { r: 3, c: c }, e: { r: 4, c: c } }); });
+    cot.forEach(function (c) {
+      var bd = h1.length;
+      nhan.forEach(function (t, j) { h1.push(j ? '' : c.ten); h2.push(t); });
+      if (coCong) { h1.push(''); h2.push('Cộng'); }
+      if (h1.length - bd > 1) gop.push({ s: { r: 3, c: bd }, e: { r: 3, c: h1.length - 1 } });
+    });
+    var bdBq = h1.length;
+    nhan.forEach(function (t, j) { h1.push(j ? '' : '% BQ'); h2.push(t); });
+    if (nT > 1) gop.push({ s: { r: 3, c: bdBq }, e: { r: 3, c: h1.length - 1 } });
+
+    function o(r, k) { var x = r ? (r.cells || []).filter(function (c) { return c.k === k; })[0] : null; return x && x.th != null ? x.th : null; }
+    function lam(v) { return v == null ? '' : Math.round(v * 100) / 100; }
+    var tong = h1.map(function () { return null; });
+    var dong = ds.map(function (n, i) {
+      var d = [i + 1, n.ma, n.ten, tenCv(n.g), n.donvi || ''];
+      cot.forEach(function (c) {
+        var cong = null;
+        thang.forEach(function (t, j) { var v = o(n.thang[j], c.k); if (v != null) cong = (cong || 0) + v; d.push(lam(v)); });
+        if (coCong) d.push(lam(cong));
+      });
+      thang.forEach(function (t, j) { var r = n.thang[j]; d.push(r && r.bq != null ? Math.round(r.bq) / 100 : ''); });
+      d.forEach(function (v, c) { if (c >= n0 && c < bdBq && v !== '') tong[c] = (tong[c] || 0) + v; });
+      return d;
+    });
+    var dongTong = tong.map(function (v, c) { return c === 2 ? 'Tổng cộng' : c >= n0 && c < bdBq && v != null ? lam(v) : ''; });
+    var moTa = 'Chức vụ: ' + (tatCa ? 'tất cả' : cv.map(tenCv).join(', ')) + ' · Nơi làm việc: ' + (tatCa ? 'tất cả' : nlv.join(', '));
+    var tieuDe = 'BÁO CÁO THỰC HIỆN KPI NHÂN VIÊN VÙNG 4 – ' + nhan[0] + (nT > 1 ? ' đến ' + nhan[nT - 1] : '');
+    var ghiChu = dsR.map(function (R, j) { return R.ngay && R.soNgay && R.ngay < R.soNgay ? nhan[j] + ' số liệu đến ngày ' + p2(R.ngay) + '/' + p2(R.thang) : null; }).filter(Boolean);
+    var aoa = [[tieuDe], [moTa + ' · Số thực hiện (TH); % BQ = điểm KPI hoàn thành' + (ghiChu.length ? ' · ' + ghiChu.join('; ') : '') + ' · Xuất lúc ' + UI.ngayGio(new Date().toISOString())], [], h1, h2]
+      .concat(dong, [dongTong]);
+    var rong = h1.map(function (x, c) { return c === 0 ? 5 : c === 1 ? 12 : c === 2 ? 24 : c === 3 ? 8 : c === 4 ? 14 : 9; });
+    function xuLy(ws, X) {   // % BQ hiện dạng phần trăm; cố định 5 cột đầu + 2 dòng tiêu đề bảng
+      for (var r = 5; r < aoa.length; r++) for (var c = bdBq; c < h1.length; c++) {
+        var a = X.utils.encode_cell({ r: r, c: c }); if (ws[a] && ws[a].t === 'n') ws[a].z = '0%';
+      }
+      ws['!views'] = [{ state: 'frozen', xSplit: n0, ySplit: 5 }];
+    }
+    return { ten: 'Thực hiện', dong: aoa, doRong: rong, gop: gop, xuLy: xuLy, soNv: ds.length };
   }
 
   // ===== KPI tất cả nhân viên =====

@@ -89,6 +89,25 @@ window.UI = (function () {
     return p;
   }
 
+  // SheetJS cho các nút xuất Excel (cùng nguồn với thẻ Nạp số liệu).
+  function napXlsx() { return napThuVien('XLSX', ['https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'vendor/xlsx.full.min.js']); }
+  // Ghi bảng (mảng các dòng) ra file .xlsx; doRong: độ rộng cột (ký tự); gop: vùng gộp ô kiểu SheetJS.
+  function xuatExcel(tenFile, dsSheet) {
+    return napXlsx().then(function () {
+      var wb = XLSX.utils.book_new();
+      dsSheet.forEach(function (s) {
+        var ws = XLSX.utils.aoa_to_sheet(s.dong);
+        if (s.doRong) ws['!cols'] = s.doRong.map(function (w) { return { wch: w }; });
+        if (s.gop) ws['!merges'] = s.gop;
+        if (s.xuLy) s.xuLy(ws, XLSX);
+        XLSX.utils.book_append_sheet(wb, ws, s.ten);
+      });
+      var mang = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      luuFile(tenFile, new Blob([mang], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    });
+  }
+  function ngayFile() { var d = new Date(); return d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2); }
+
   // Tải một Blob về máy với tên file cho trước.
   function luuFile(ten, blob) {
     var a = el('a', { href: URL.createObjectURL(blob), download: ten });
@@ -96,6 +115,6 @@ window.UI = (function () {
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 60000);
   }
 
-  return { napThuVien: napThuVien, luuFile: luuFile, el: el, $: $, xoa: xoa, mauPhanTram: mauPhanTram, phanTram: phanTram, dangTai: dangTai, TEN_QUYEN: TEN_QUYEN,
+  return { napThuVien: napThuVien, luuFile: luuFile, napXlsx: napXlsx, xuatExcel: xuatExcel, ngayFile: ngayFile, el: el, $: $, xoa: xoa, mauPhanTram: mauPhanTram, phanTram: phanTram, dangTai: dangTai, TEN_QUYEN: TEN_QUYEN,
     TRUONG_KHOA: TRUONG_KHOA, TRUONG_SUA: TRUONG_SUA, TRUONG_CONG_VIEC: TRUONG_CONG_VIEC, TRUONG_AN: TRUONG_AN, TEN_TRUONG: TEN_TRUONG, ngayGio: ngayGio, dong: dong };
 })();

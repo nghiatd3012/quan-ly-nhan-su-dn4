@@ -55,7 +55,26 @@
       });
       if (dangXem) sel.value = dangXem;
     });
-    return el('div', { class: 'card hs-chon-the' }, [el('label', { for: 'hs-chon', text: 'Xem hồ sơ của', style: 'margin-top:0' }), sel]);
+    var nut = el('button', { type: 'button', id: 'hs-tai-excel', class: 'btn g', text: 'Tải hồ sơ NV (Excel)', onclick: function () { taiExcel(nut); } });
+    return el('div', { class: 'card hs-chon-the' }, [el('label', { for: 'hs-chon', text: 'Xem hồ sơ của', style: 'margin-top:0' }), sel, nut]);
+  }
+
+  // QL/QT tải file Excel hồ sơ tất cả NV đang làm, đủ mọi trường (người dùng chốt 27/11/2026).
+  function taiExcel(nut) {
+    nut.disabled = true;
+    var chu = nut.textContent;
+    nut.textContent = 'Đang tạo file…';
+    Api.goi('hoSo.xuat').then(function (kq) {
+      if (!kq.ok) throw new Error(kq.thongBao || 'Không tải được hồ sơ');
+      var ten = Object.assign({ TrangThai: 'Trạng thái' }, UI.TEN_TRUONG);
+      var tt = { DangLam: 'Đang làm', Nghi: 'Đã nghỉ' };
+      var dong = [kq.cot.map(function (c) { return ten[c] || c; })].concat(kq.nhanVien.map(function (n) {
+        return kq.cot.map(function (c) { var v = n[c] == null ? '' : String(n[c]); return c === 'TrangThai' ? (tt[v] || v) : c === 'Quyen' ? (UI.TEN_QUYEN[v] || v) : v; });
+      }));
+      var rong = kq.cot.map(function (c, i) { return Math.min(40, Math.max(8, dong.reduce(function (m, d) { return Math.max(m, String(d[i]).length + 2); }, 0))); });
+      return UI.xuatExcel('HoSo_NhanVien_DN4_' + UI.ngayFile() + '.xlsx', [{ ten: 'Hồ sơ NV', dong: dong, doRong: rong }]);
+    }).catch(function (e) { alert(e.message || String(e)); })
+      .then(function () { nut.disabled = false; nut.textContent = chu; });
   }
 
   function tai(than, thongBao) {
