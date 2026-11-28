@@ -103,12 +103,14 @@ window.HuongDan = (function () {
     ]);
   }
 
-  function moBai(b) {
-    var vung = UI.xoa(S.vung), ql = laQL();
+  // tc (mở từ thẻ Nhiệm vụ): {vung, quayLai(), daDoc(nut)} — vẽ trong vùng khác, có nút "Tôi đã đọc" ở cuối bài, không có nút Sửa.
+  function moBai(b, tc) {
+    tc = tc || {};
+    var vung = UI.xoa(tc.vung || S.vung), ql = laQL() && !tc.vung;
     var nd = el('div', { class: 'md' }, [el('p', { class: 'hint', text: 'Đang tải bài…' })]);
     var meta = 'Đăng: ' + (b.tenNguoiDang || b.nguoiDang) + ' · ' + UI.ngayGio(b.lucDang) +
       (b.lucSua ? ' — Sửa: ' + (b.tenNguoiSua || b.nguoiSua) + ' · ' + UI.ngayGio(b.lucSua) : '');
-    var lenh = el('div', { class: 'hd-lenh' }, [el('button', { type: 'button', class: 'btn g nho', id: 'hd-quay-lai', text: '← Quay lại', onclick: veDs })]);
+    var lenh = el('div', { class: 'hd-lenh' }, [el('button', { type: 'button', class: 'btn g nho', id: 'hd-quay-lai', text: '← Quay lại', onclick: tc.quayLai || veDs })]);
     var the = el('div', { class: 'card hd-doc' }, [lenh, el('h2', { class: 'hd-tieu-de', text: b.tieuDe }), el('p', { class: 'hint', text: meta }), nd]);
     if ((b.tep || []).length) {
       the.appendChild(el('div', { class: 'hd-tep' }, [el('b', { text: 'Tệp đính kèm' })].concat(b.tep.map(function (t) {
@@ -125,7 +127,26 @@ window.HuongDan = (function () {
         lenh.appendChild(el('button', { type: 'button', class: 'btn nho', id: 'hd-sua', text: 'Sửa',
           onclick: function () { soan(Object.assign({}, b, { noiDung: md })); } }));
       }
+      if (tc.daDoc) {
+        var nut = el('button', { type: 'button', class: 'btn', id: 'hd-da-doc', text: '✔ Tôi đã đọc', onclick: function () { tc.daDoc(nut); } });
+        the.appendChild(el('div', { class: 'hd-lenh hd-da-doc' }, [nut]));
+      }
     }).catch(function (e) { UI.xoa(nd).appendChild(el('p', { class: 'loi-the', text: e.message })); });
+  }
+
+  // Mở bài theo id từ thẻ khác (nhiệm vụ Đọc).
+  function moBaiId(vung, id, tc) {
+    UI.xoa(vung).appendChild(el('div', { class: 'card' }, [el('p', { class: 'hint', text: 'Đang tải bài…' })]));
+    return taiMucLuc().then(function (ml) {
+      if (!S.mucLuc) S.mucLuc = ml;
+      var b = (ml.bai || []).filter(function (x) { return x.id === id; })[0];
+      if (!b) throw new Error('Không tìm thấy bài (có thể bài vừa được đăng, chờ 1–2 phút rồi thử lại).');
+      moBai(b, Object.assign({}, tc, { vung: vung }));
+    }).catch(function (e) {
+      UI.xoa(vung).appendChild(el('div', { class: 'card' }, [
+        el('button', { type: 'button', class: 'btn g nho', text: '← Quay lại', onclick: tc.quayLai }),
+        el('p', { class: 'loi-the', text: e.message })]));
+    });
   }
   function kb(n) { return n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
 
@@ -154,5 +175,5 @@ window.HuongDan = (function () {
     if (b) moBai(b); else veDs();
   }
 
-  return { taiLai: function () { if (S.vung) { UI.xoa(S.vung); ve(S.vung); } }, daLuu: daLuu };
+  return { taiLai: function () { if (S.vung) { UI.xoa(S.vung); ve(S.vung); } }, daLuu: daLuu, moBaiId: moBaiId };
 })();

@@ -3,18 +3,28 @@
 window.App = (function () {
   var $ = UI.$, el = UI.el;
   var QUYEN = { NV: 1, QL: 2, QT: 3 };
-  var THU_TU = ['huongdan', 'kpi', 'hoso', 'duyet', 'nap'];
+  var THU_TU = ['nhiemvu', 'huongdan', 'kpi', 'hoso', 'duyet', 'nap'];
+  var KHOA_DEM = 'qlns.dem:'; // chỉ con số việc còn lại / chờ duyệt, để chọn thẻ mở đầu khi mở lại phiên
   var dsThe = {};
   var demThe = {}; // số đếm trên tên thẻ, giữ lại khi vẽ lại thanh thẻ
   var theDangMo = null;
   var lanVe = 0; // tăng mỗi lần đổi màn để bỏ kết quả về muộn
 
-  var App = { nguoiDung: null };
+  var App = { nguoiDung: null, dem: null };
 
-  // Thẻ mở đầu khi vào trang: KPI (dù thẻ Chính sách & Hướng dẫn đứng trước trên thanh thẻ).
+  // Thẻ mở đầu: NV còn nhiệm vụ → Nhiệm vụ; còn lại → KPI (dù các thẻ khác đứng trước trên thanh thẻ).
   App.theMoDau = function (ds) {
-    if (ds.some(function (t) { return t.id === 'kpi'; })) return 'kpi';
-    return ds[0] ? ds[0].id : null;
+    var q = App.nguoiDung && App.nguoiDung.quyen;
+    return NVChung.theMoDau(ds.map(function (t) { return t.id; }), q, App.dem);
+  };
+
+  function docDem(ma) { try { return JSON.parse(localStorage.getItem(KHOA_DEM + ma) || 'null'); } catch (e) { return null; } }
+  // Số nhiệm vụ mới (từ login, nv.dem hoặc sau khi làm/duyệt việc): nhớ con số, cập nhật số trên thẻ (không tự nhảy thẻ).
+  App.capNhatDemNv = function (dem) {
+    if (!dem || !App.nguoiDung) return;
+    App.dem = { conLai: dem.conLai || 0, choDuyet: dem.choDuyet || 0 };
+    try { localStorage.setItem(KHOA_DEM + App.nguoiDung.ma, JSON.stringify(App.dem)); } catch (e) { }
+    App.datDem('nhiemvu', NVChung.demTren(App.dem, App.nguoiDung.quyen));
   };
 
   App.dangKyThe = function (the) {
@@ -39,6 +49,7 @@ window.App = (function () {
 
   App.veDangNhap = function (thongBao) {
     App.nguoiDung = null;
+    App.dem = null;
     theDangMo = null;
     demThe = {};
     UI.xoa($('the-nd'));
@@ -74,6 +85,10 @@ window.App = (function () {
     if (idDau) moThe(idDau);
     // thẻ nào có capNhatDem() (vd. số yêu cầu chờ duyệt) thì lấy số ngay khi vào trang
     ds.forEach(function (t) { if (t.capNhatDem) t.capNhatDem(); });
+    if (dsThe.nhiemvu) {
+      if (App.dem) App.datDem('nhiemvu', NVChung.demTren(App.dem, u.quyen));
+      Api.goi('nv.dem', null, true).then(function (kq) { if (kq.ok && App.nguoiDung === u) App.capNhatDemNv(kq.dem); });
+    }
   }
 
   function veThanhThe() {
@@ -129,6 +144,8 @@ window.App = (function () {
       $('dn-nut').disabled = false;
       if (!kq.ok) { $('dn-loi').textContent = kq.thongBao || 'Đăng nhập không thành công'; return; }
       Api.datPhien({ token: kq.token, user: kq.user });
+      App.nguoiDung = kq.user;
+      if (kq.dem) App.capNhatDemNv(kq.dem);
       vaoTrang(kq.user);
     });
   });
@@ -183,7 +200,7 @@ window.App = (function () {
   // Gọi sau khi đã nạp mọi file thẻ (cuối index.html).
   App.batDau = function () {
     var p = Api.layPhien();
-    if (p && p.token && p.user) vaoTrang(p.user); else App.veDangNhap('');
+    if (p && p.token && p.user) { App.dem = docDem(p.user.ma); vaoTrang(p.user); } else App.veDangNhap('');
   };
 
   return App;

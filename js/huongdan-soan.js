@@ -87,17 +87,23 @@ window.HuongDanSoan = (function () {
       nutXem.textContent = dangXem ? 'Xem trước' : 'Soạn tiếp';
     });
 
+    // Sửa bài: đánh dấu → người đã đọc (nhiệm vụ Đọc gắn bài này) phải đọc lại; không đánh dấu → chỉ nhãn "Mới cập nhật".
+    var docLai = bai ? el('input', { type: 'checkbox', id: 'hds-doc-lai' }) : null;
+    var oDocLai = bai ? el('label', { class: 'hds-doc-lai', for: 'hds-doc-lai' }, [docLai,
+      ' Yêu cầu đọc lại (nhân viên đã bấm "Tôi đã đọc" sẽ phải đọc lại)']) : null;
     var nutLuu = el('button', { type: 'button', class: 'btn', id: 'hds-luu', text: bai ? 'Lưu thay đổi' : 'Đăng bài' });
     nutLuu.addEventListener('click', function () {
       if (!tieuDe.value.trim()) { loi.textContent = 'Chưa nhập tiêu đề'; tieuDe.focus(); return; }
       if (nd.value.length > MAX_ND) { loi.textContent = 'Nội dung quá 45.000 ký tự'; return; }
       loi.textContent = ''; nutLuu.disabled = true;
       var noiDung = nd.value;
-      Api.goi('bai.luu', { id: bai ? bai.id : '', tieuDe: tieuDe.value, muc: muc.value, noiDung: noiDung, tep: tep }).then(function (kq) {
+      Api.goi('bai.luu', { id: bai ? bai.id : '', tieuDe: tieuDe.value, muc: muc.value, noiDung: noiDung, tep: tep,
+        docLai: !!(docLai && docLai.checked) }).then(function (kq) {
         nutLuu.disabled = false;
         if (!kq.ok) { if (kq.loi !== 'HET_PHIEN') loi.textContent = kq.thongBao || 'Không lưu được'; return; }
         xong(kq.mucLuc, { id: kq.bai.id, phienBan: kq.bai.phienBan, noiDung: noiDung },
-          kq.canhBao || ((bai ? 'Đã lưu thay đổi.' : 'Đã đăng bài.') + ' Người khác thấy sau khoảng 1–2 phút.'));
+          kq.canhBao || ((bai ? 'Đã lưu thay đổi.' : 'Đã đăng bài.') + ' Người khác thấy sau khoảng 1–2 phút.' +
+            (kq.moLai ? ' Đã yêu cầu ' + kq.moLai + ' người đọc lại.' : '')));
       });
     });
     var lenh = [nutLuu, el('button', { type: 'button', class: 'btn g', id: 'hds-huy', text: 'Hủy', onclick: function () { xong(null); } })];
@@ -116,7 +122,7 @@ window.HuongDanSoan = (function () {
       el('label', { for: 'hds-tieu-de', text: 'Tiêu đề' }), tieuDe,
       el('label', { for: 'hds-muc', text: 'Mục' }), muc,
       el('div', { class: 'hds-dau' }, [el('label', { for: 'hds-nd', text: 'Nội dung' }), nutXem]),
-      thanhNut, nd, xemTruoc, dem, dsTep, tt, loi,
+      thanhNut, nd, xemTruoc, dem, dsTep, oDocLai, tt, loi,
       el('div', { class: 'hd-lenh' }, lenh)
     ]));
     capNhatDem(); veTep();
