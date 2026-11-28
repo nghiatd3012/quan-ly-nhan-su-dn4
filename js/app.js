@@ -3,13 +3,19 @@
 window.App = (function () {
   var $ = UI.$, el = UI.el;
   var QUYEN = { NV: 1, QL: 2, QT: 3 };
-  var THU_TU = ['kpi', 'hoso', 'duyet', 'nap'];
+  var THU_TU = ['huongdan', 'kpi', 'hoso', 'duyet', 'nap'];
   var dsThe = {};
   var demThe = {}; // số đếm trên tên thẻ, giữ lại khi vẽ lại thanh thẻ
   var theDangMo = null;
   var lanVe = 0; // tăng mỗi lần đổi màn để bỏ kết quả về muộn
 
   var App = { nguoiDung: null };
+
+  // Thẻ mở đầu khi vào trang: KPI (dù thẻ Chính sách & Hướng dẫn đứng trước trên thanh thẻ).
+  App.theMoDau = function (ds) {
+    if (ds.some(function (t) { return t.id === 'kpi'; })) return 'kpi';
+    return ds[0] ? ds[0].id : null;
+  };
 
   App.dangKyThe = function (the) {
     dsThe[the.id] = the;
@@ -63,8 +69,9 @@ window.App = (function () {
     $('nd-phu').textContent = u.ma + ' · ' + (UI.TEN_QUYEN[u.quyen] || u.quyen);
     veThanhThe();
     var ds = theDuocXem();
-    var dau = ds.filter(function (t) { return t.id === theDangMo; })[0] || ds[0];
-    if (dau) moThe(dau.id);
+    var dau = ds.filter(function (t) { return t.id === theDangMo; })[0];
+    var idDau = dau ? dau.id : App.theMoDau(ds);
+    if (idDau) moThe(idDau);
     // thẻ nào có capNhatDem() (vd. số yêu cầu chờ duyệt) thì lấy số ngay khi vào trang
     ds.forEach(function (t) { if (t.capNhatDem) t.capNhatDem(); });
   }

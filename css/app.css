@@ -159,3 +159,40 @@ label.btn{cursor:pointer;margin:0}
 .o-chon{white-space:nowrap;width:auto}
 .hs-chon-the>#hs-tai-excel{margin-left:auto;white-space:nowrap}
 @media (max-width:640px){.hs-chon-the>#hs-tai-excel{display:block;width:100%;margin-top:8px}}
+
+/* ===== Chính sách & Hướng dẫn (27/11/2026) ===== */
+.hd-lenh{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+#hd-tim{margin:0 0 10px}
+.hd-ds{display:flex;flex-direction:column;gap:8px}
+.hd-muc{border:1px solid #e2e6ee;border-radius:10px;padding:0 10px}
+.hd-muc>summary{cursor:pointer;font-weight:600;padding:10px 0;list-style-position:inside}
+.hd-muc>summary small{color:#778;font-weight:400}
+.hd-muc .hint{margin:0 0 10px}
+.hd-bai{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:left;background:#fff;border:0;border-top:1px dashed #e7eaf0;padding:10px 2px;font:inherit;color:inherit;cursor:pointer}
+.hd-ds>.hd-bai{border:1px solid #e2e6ee;border-radius:10px;padding:10px}
+.hd-bai:hover .hd-td{color:#0b4ea2}
+.hd-td{font-weight:600;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.hd-td .chip{margin:0}
+.hd-bai small{color:#778;font-size:12px}
+.hd-doc .hd-lenh{justify-content:space-between;margin-bottom:6px}
+.hd-tieu-de{font-size:18px;margin:6px 0 2px}
+.hd-tep{display:flex;flex-direction:column;gap:6px;margin-top:14px;padding-top:10px;border-top:1px solid #e2e6ee}
+.md{line-height:1.55;overflow-wrap:anywhere}
+.md h2{font-size:17px;margin:14px 0 6px}.md h3{font-size:15.5px;margin:12px 0 6px}.md h4{font-size:14.5px;margin:10px 0 4px}
+.md p{margin:0 0 10px}.md ul,.md ol{margin:0 0 10px;padding-left:22px}
+.md img{max-width:100%;height:auto;border-radius:8px}
+.md table{border-collapse:collapse;margin:0 0 10px;display:block;overflow-x:auto;max-width:100%}
+.md th,.md td{border:1px solid #d5dbe5;padding:6px 9px;text-align:left}
+.md th{background:#f3f6fb}
+.hd-tb{background:#e8f5e9;color:#1b5e20;font-size:13.5px}
+.hds label{display:block;font-size:13px;color:#556;margin:10px 0 4px}
+.hds-dau{display:flex;justify-content:space-between;align-items:flex-end;gap:8px}
+.hds-nut{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.hds-nd{width:100%;min-height:16em;padding:10px 12px;border:1px solid #cfd6e2;border-radius:9px;font:13.5px/1.5 ui-monospace,Consolas,monospace;resize:vertical}
+.hds-xem{border:1px dashed #cfd6e2;border-radius:9px;padding:10px 12px;min-height:8em}
+.hds-tep .row{align-items:center}
+.hds .hd-lenh{margin-top:12px}
+.hdm-ds{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.hdm-dong{display:flex;gap:6px;align-items:center}
+.hdm-dong input{flex:1}
+.hdm-dong small{white-space:nowrap;margin:0}
